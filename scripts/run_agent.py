@@ -112,6 +112,19 @@ def main() -> None:
         model_name=args.model,
     )
 
+    # Fetch task's docker_image from server (overrides CLI default)
+    if config.sandbox_type == "docker":
+        try:
+            import httpx
+            resp = httpx.get(f"{config.server_url}/tasks/{config.task_id}", timeout=10)
+            if resp.status_code == 200:
+                task_image = resp.json().get("docker_image", "")
+                if task_image:
+                    config.docker_image = task_image
+                    logging.info(f"Using task's Docker image: {task_image}")
+        except Exception as e:
+            logging.warning(f"Could not fetch task docker_image, using default: {e}")
+
     agent = create_agent(args, config)
     runner = AgentRunner(config=config, agent=agent)
 
