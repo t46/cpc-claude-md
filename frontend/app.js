@@ -22,8 +22,8 @@ let state = {
   selectedTaskId: null,
   prevProposalCount: 0,
   prevReviewCount: 0,
-  laneCount: 1,
-  laneAgents: [null, null],  // agent_id assigned to each lane, null = all
+  laneAgents: [null],
+  wPool: [],
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -58,21 +58,6 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.classList.add("active");
       $$(".view").forEach(v => v.hidden = true);
       $(`#view-${view}`).hidden = false;
-    });
-  });
-
-  // Lane controls
-  $$(".lane-btn").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const lanes = parseInt(btn.dataset.lanes);
-      state.laneCount = lanes;
-      $$(".lane-btn").forEach(b => b.classList.remove("active"));
-      btn.classList.add("active");
-      const container = $("#activity-lanes");
-      container.className = `activity-lanes lanes-${lanes}`;
-      const lane1 = container.querySelector("[data-lane='1']");
-      lane1.hidden = (lanes === 1);
-      renderActivityFeed();
     });
   });
 
@@ -234,14 +219,11 @@ function renderWCurrent() {
     const html = DOMPurify.sanitize(marked.parse(latest.content || ""));
     $("#wcurrent-content").innerHTML = html;
   } else {
-    $("#wcurrent-content").textContent = "No accepted samples yet";
+    $("#wcurrent-content").innerHTML = '<div class="empty waiting">Waiting for shared knowledge to emerge...</div>';
   }
 }
 
 function renderActivityFeed() {
-  const taskId = state.selectedTaskId;
-
-  // Investigation phase: only tool_use/status events (not proposals/reviews — those go to dialogue)
   const events = [];
   for (const a of (state.agentActivity || [])) {
     const time = a.timestamp || a.created_at || "";
@@ -256,48 +238,29 @@ function renderActivityFeed() {
   events.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
   $("#activity-count").textContent = events.length;
 
-  // Get unique agents from all sources
+  // Agent filter dropdown
   const allAgentIds = [...new Set([
     ...events.map(e => e.agent_id),
     ...(state.agents || []).map(a => a.id || a.agent_id),
   ].filter(Boolean))];
 
-  // Render agent selector dropdowns
   const toggles = $("#agent-toggles");
-  const makeSelect = (laneIdx) => {
-    const selected = state.laneAgents[laneIdx];
-    const options = `<option value="">All agents</option>` +
-      allAgentIds.map(id => `<option value="${esc(id)}" ${selected === id ? 'selected' : ''}>${esc(id)}</option>`).join("");
-    return `<select class="agent-select" data-lane="${laneIdx}">${options}</select>`;
-  };
-  toggles.innerHTML = makeSelect(0) + (state.laneCount === 2 ? makeSelect(1) : "");
-  toggles.querySelectorAll(".agent-select").forEach(sel => {
-    sel.addEventListener("change", () => {
-      const lane = parseInt(sel.dataset.lane);
-      state.laneAgents[lane] = sel.value || null;
-      renderActivityFeed();
-    });
+  const selected = state.laneAgents[0];
+  const options = `<option value="">All agents</option>` +
+    allAgentIds.map(id => `<option value="${esc(id)}" ${selected === id ? 'selected' : ''}>${esc(id)}</option>`).join("");
+  toggles.innerHTML = `<select class="agent-select" id="agent-filter">${options}</select>`;
+  $("#agent-filter").addEventListener("change", (e) => {
+    state.laneAgents[0] = e.target.value || null;
+    renderActivityFeed();
   });
 
-  // Render lanes
-  for (let lane = 0; lane < state.laneCount; lane++) {
-    const feed = $(`#activity-feed-${lane}`);
-    const label = $(`#lane-label-${lane}`);
-    if (!feed) continue;
+  // Render events
+  const feed = $("#activity-feed-0");
+  const filtered = selected ? events.filter(e => e.agent_id === selected) : events;
+  const latest = filtered.slice(0, 30);
 
-    const filteredAgent = state.laneAgents[lane];
-    const filtered = filteredAgent
-      ? events.filter(e => e.agent_id === filteredAgent)
-      : events;
-    const latest = filtered.slice(0, 30);
-
-    label.textContent = filteredAgent || "All agents";
-    feed.innerHTML = latest.map(e => e.html).join("") || '<div class="empty">Waiting for activity...</div>';
-
-    feed.querySelectorAll("[data-proposal-id]").forEach(el => {
-      el.addEventListener("click", () => showProposalModal(el.dataset.proposalId));
-    });
-  }
+  feed.innerHTML = latest.map(e => e.html).join("")
+    || '<div class="empty waiting">Waiting for agents to start investigating...</div>';
 }
 
 function renderDialogue() {
@@ -381,7 +344,7 @@ function renderDialogue() {
   $("#dialogue-count").textContent = dialogues.length;
 
   feed.innerHTML = dialogues.map(d => d.html).join("")
-    || '<div class="empty">No language games yet — waiting for proposals...</div>';
+    || '<div class="empty waiting">Waiting for agents to propose and play the language game...</div>';
 
   feed.querySelectorAll("[data-proposal-id]").forEach(el => {
     el.addEventListener("click", () => showProposalModal(el.dataset.proposalId));
@@ -406,7 +369,7 @@ function renderAgents() {
   $("#agent-count").textContent = agents.length;
 
   if (agents.length === 0) {
-    list.innerHTML = '<div class="empty">No agents registered</div>';
+    list.innerHTML = '<div class="empty waiting">Waiting for agents to join...</div>';
     return;
   }
 
@@ -434,7 +397,7 @@ function renderMHNGChain() {
   const reviews = state.reviews.filter(r => r.task_id === state.selectedTaskId || !sb);
 
   if (reviews.length === 0) {
-    chain.innerHTML = '<div class="empty">No MHNG steps yet</div>';
+    chain.innerHTML = '<div class="empty waiting">Waiting for the first language game...</div>';
     return;
   }
 

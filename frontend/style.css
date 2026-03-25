@@ -244,6 +244,11 @@ header h1 {
 }
 
 .empty { color: var(--text-muted); font-style: italic; font-size: 0.85rem; padding: 0.5rem 0; }
+.empty.waiting { animation: pulse 2s ease-in-out infinite; }
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
 
 /* ===== Task Panel ===== */
 .task-desc {
@@ -305,23 +310,6 @@ header h1 {
   flex-wrap: wrap;
 }
 .activity-header h2 { margin-bottom: 0; }
-.lane-controls { display: flex; gap: 0.25rem; }
-.lane-btn {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text-muted);
-  padding: 0.25rem 0.6rem;
-  border-radius: var(--radius);
-  cursor: pointer;
-  font-size: 0.75rem;
-  transition: all 0.2s;
-}
-.lane-btn:hover { color: var(--text); border-color: rgba(123,140,255,0.3); }
-.lane-btn.active {
-  background: rgba(123,140,255,0.1);
-  color: var(--accent);
-  border-color: rgba(123,140,255,0.3);
-}
 .agent-toggles { display: flex; gap: 0.5rem; }
 .agent-select {
   background: var(--bg);
@@ -344,19 +332,6 @@ header h1 {
 .agent-select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 8px rgba(123,140,255,0.15); }
 .agent-select option { background: var(--bg-panel); color: var(--text); }
 
-.activity-lanes { display: flex; gap: 0.75rem; }
-.activity-lanes.lanes-1 { }
-.activity-lanes.lanes-2 .activity-lane { flex: 1; }
-.activity-lane { flex: 1; min-width: 0; }
-.lane-label {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  font-weight: 600;
-  margin-bottom: 0.3rem;
-  padding: 0.2rem 0.5rem;
-  background: var(--bg);
-  border-radius: var(--radius);
-}
 .activity-feed {
   max-height: 280px;
   overflow-y: auto;
