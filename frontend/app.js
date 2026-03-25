@@ -650,16 +650,13 @@ function renderHistory() {
       </div>
       <div class="w-round-samples">
         ${roundSamples.map(s => {
-          const contentHtml = DOMPurify.sanitize(marked.parse(s.content || ""));
           const statusCls = s.accepted ? "w-sample-accepted" : "w-sample-rejected";
           const statusIcon = s.accepted ? "&#x2705;" : "&#x274C;";
-          return `<div class="w-sample ${statusCls}">
-            <div class="w-sample-header">
-              <span>${statusIcon}</span>
-              <span class="w-sample-by">by ${esc(s.proposer_id || '?')}</span>
-              <span class="w-sample-time">${s.created_at ? timeAgo(s.created_at) : ''}</span>
-            </div>
-            <div class="w-sample-body markdown-body">${contentHtml}</div>
+          const sid = s.id || s.sample_id || '';
+          return `<div class="w-sample ${statusCls}" data-sample-content="${esc(s.content || '')}" data-sample-by="${esc(s.proposer_id || '?')}" data-sample-round="${s.round_index ?? '?'}">
+            <span>${statusIcon}</span>
+            <span class="w-sample-by">by ${esc(s.proposer_id || '?')}</span>
+            <span class="w-sample-time">${s.created_at ? timeAgo(s.created_at) : ''}</span>
           </div>`;
         }).join("")}
       </div>
@@ -668,9 +665,19 @@ function renderHistory() {
 
   container.innerHTML = html;
 
-  // Click to expand/collapse samples
+  // Click to show in modal
   container.querySelectorAll(".w-sample").forEach(el => {
-    el.addEventListener("click", () => el.classList.toggle("expanded"));
+    el.addEventListener("click", () => {
+      const content = el.dataset.sampleContent || "";
+      const by = el.dataset.sampleBy || "?";
+      const round = el.dataset.sampleRound || "?";
+      $("#modal-title").textContent = `Sample by ${by}`;
+      $("#modal-meta").textContent = `Round ${round}`;
+      $("#modal-proposed-w").innerHTML = DOMPurify.sanitize(marked.parse(content || "(empty)"));
+      $("#modal-reasoning").textContent = "";
+      $("#modal-observations").textContent = "";
+      $("#proposal-modal").hidden = false;
+    });
   });
 }
 
