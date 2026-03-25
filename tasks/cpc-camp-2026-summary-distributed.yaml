@@ -1,0 +1,40 @@
+task_id: cpc-camp-2026-summary-distributed
+description: |
+  あなたは CPC Spring Camp 2026（集合的予測符号化と記号創発システムに関する研究合宿）の
+  日別メモの一部を担当し、合宿全体のまとめドキュメントを作成するタスクに取り組んでいます。
+
+  これは分散ベイズ推論のタスクです。各エージェントは合宿の一日分のメモ（部分観測）のみを
+  持っており、MHNG プロトコルを通じて合宿全体の知識を集約します。
+
+  ## 観測データ (o)
+  Docker コンテナ内の /workspace/ に day1.md 〜 day5.md があります。
+  あなたの担当日は、あなたの specialization で指定されています（例: "day1", "day2" 等）。
+  担当日のファイルだけがあなたの観測 o^k です。他の日のファイルは読まないでください。
+
+  ## あなたがやること
+  1. あなたの担当日のファイル（例: /workspace/day1.md）を読み、
+     この合宿はどのようなものだったかについて仮説 (z) を形成してください。
+     現在の共有知識 w も参考にしてください（w がある場合）。
+  2. その仮説に基づいて、合宿全体のまとめドキュメント (w') を markdown で作成し、
+     proposed_w として返してください。あなたは一日分しか見ていませんが、
+     w から得た他の日の情報も統合して、できる限り合宿全体を捉えたまとめを書いてください。
+  3. observation_summary には、あなたの担当日のメモから得た主要な知見を記載してください。
+
+  ## CPC変数の対応
+  - o^k: /workspace/day{k}.md（エージェントごとに異なる部分観測）
+  - z^k: 自分の日のメモと w を踏まえた合宿全体の理解
+  - w: 合宿全体のまとめ markdown ドキュメント
+  - a: w を読んだ上で改めて自分の day{k}.md を解釈し直す（ファイル編集はしない）
+
+  ## 担当日の確認方法
+  あなたの specialization が担当日です（例: specialization="day1" なら /workspace/day1.md）。
+
+initial_w: ""
+docker_image: cpc-task-distributed:latest
+max_rounds: 20
+agent_specializations:
+  - "day1"
+  - "day2"
+  - "day3"
+  - "day4"
+  - "day5"

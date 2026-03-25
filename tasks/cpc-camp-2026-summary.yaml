@@ -1,0 +1,30 @@
+task_id: cpc-camp-2026-summary
+description: |
+  あなたは CPC Spring Camp 2026（集合的予測符号化と記号創発システムに関する研究合宿）の
+  参加メモを読み、この合宿がどのようなものであったかを表現する簡潔なまとめを作成するタスクに
+  取り組んでいます。
+
+  ## 観測データ (o)
+  Docker コンテナ内の /workspace/cpc-camp-2026-notes.md に合宿のセッションメモがあります。
+  これがあなたの観測データです。まずこのファイルを読んでください。
+
+  ## あなたがやること
+  1. /workspace/cpc-camp-2026-notes.md を読み、この合宿はどのようなものだったかについて
+     仮説 (z) を形成してください。
+  2. その仮説に基づいて、この合宿を一言〜数文で表す簡潔なまとめ (w') を提案してください。
+     これが proposed_w として返すテキストです。
+  3. 次に、あなたの仮説 z に基づいて /workspace/cpc-camp-2026-notes.md を編集してください。
+     より良いまとめドキュメントになるように、構成の改善、内容の充実化、要約の追加などを
+     自由に行ってください。この編集が action (a) です。
+  4. 編集後の /workspace/cpc-camp-2026-notes.md の内容が新しい観測 (o) となります。
+     observation_summary には、どのような編集を行ったかの要約を記載してください。
+
+  ## CPC変数の対応
+  - o: /workspace/cpc-camp-2026-notes.md（読み取り → 編集後が新しい o）
+  - z: この合宿はどのようなものだったかに関するあなたの仮説
+  - w: 合宿の簡潔なまとめ（一言〜数文）
+  - a: notes.md の編集
+
+initial_w: ""
+docker_image: cpc-task-summary:latest
+max_rounds: 20

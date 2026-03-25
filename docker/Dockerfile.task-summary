@@ -1,0 +1,8 @@
+FROM python:3.12-slim
+
+WORKDIR /workspace
+
+# Copy the camp notes as the observation data
+COPY data/task-cpc-camp-2026-summary/cpc-camp-2026-notes.md /workspace/cpc-camp-2026-notes.md
+
+# Agents can freely edit this file as their action (a)
