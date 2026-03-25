@@ -58,6 +58,23 @@ header h1 {
 }
 .header-btn:hover { background: var(--bg-hover); }
 
+/* Nav */
+.header-nav { display: flex; gap: 0.25rem; }
+.nav-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0.35rem 0.75rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.nav-btn:hover { color: var(--text); background: var(--bg-hover); }
+.nav-btn.active { color: var(--accent); border-color: var(--accent); }
+
+/* Views */
+.view[hidden] { display: none; }
+
 /* Status dot */
 .status-dot {
   width: 10px; height: 10px;
@@ -188,6 +205,9 @@ header h1 {
 .event-accept { border-left: 3px solid var(--green); }
 .event-reject { border-left: 3px solid var(--red); }
 .event-propose { border-left: 3px solid var(--accent); }
+
+.event.clickable { cursor: pointer; }
+.event.clickable:hover { background: var(--bg-hover); }
 
 /* New event animation */
 .event-new { animation: slideIn 0.4s ease-out; }
@@ -351,6 +371,44 @@ header h1 {
   flex-shrink: 0;
 }
 .about-step p { margin-top: 0.2rem; font-size: 0.85rem; color: var(--text-muted); }
+
+/* ===== Samples View ===== */
+.panel-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; }
+.samples-list { display: flex; flex-direction: column; gap: 0.5rem; }
+.sample-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.sample-card:hover { border-color: var(--accent); }
+.sample-card.sample-accepted { border-left: 3px solid var(--green); }
+.sample-card.sample-rejected { border-left: 3px solid var(--red); }
+.sample-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.4rem;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+.sample-idx { font-weight: 700; }
+.sample-status { font-size: 0.75rem; padding: 0.1rem 0.4rem; border-radius: 4px; }
+.sample-status.sample-accepted { background: rgba(63,185,80,0.15); color: var(--green); }
+.sample-status.sample-rejected { background: rgba(248,81,73,0.15); color: var(--red); }
+.sample-round { color: var(--text-muted); font-size: 0.8rem; }
+.sample-by { color: var(--text-muted); font-size: 0.8rem; }
+.sample-time { color: var(--text-muted); font-size: 0.75rem; margin-left: auto; }
+.sample-preview {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow: hidden;
+  max-height: 3em;
+}
 
 /* ===== Responsive ===== */
 @media (max-width: 900px) {

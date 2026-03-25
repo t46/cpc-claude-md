@@ -16,12 +16,19 @@
   <header>
     <div class="header-inner">
       <h1>CPC Platform <span class="subtitle">Collective Predictive Coding</span></h1>
+      <nav class="header-nav">
+        <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+        <button class="nav-btn" data-view="samples">Samples</button>
+      </nav>
       <div class="header-actions">
         <div id="connection-status" class="status-dot"></div>
         <button id="about-btn" class="header-btn">About</button>
       </div>
     </div>
   </header>
+
+  <!-- Dashboard View -->
+  <div id="view-dashboard" class="view">
 
   <!-- Top: Task + w_current -->
   <section class="top-row">
@@ -77,6 +84,17 @@
     </div>
     <div id="convergence-bars" class="convergence-bars"></div>
   </section>
+
+  </div><!-- /view-dashboard -->
+
+  <!-- Samples View (hidden by default) -->
+  <div id="view-samples" class="view" hidden>
+    <section class="panel panel-full">
+      <h2>All Samples <span class="math-tex">w</span><sup>[i]</sup> <span id="samples-count" class="count-badge">0</span></h2>
+      <p class="panel-desc">Each sample is one Monte Carlo draw from the posterior. Accepted samples update w<sub>current</sub>.</p>
+      <div id="samples-list" class="samples-list"></div>
+    </section>
+  </div>
 
   <!-- Proposal Detail Modal -->
   <div id="proposal-modal" class="modal-overlay" hidden>

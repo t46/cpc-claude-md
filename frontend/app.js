@@ -48,6 +48,17 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  // Nav switching
+  $$(".nav-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const view = btn.dataset.view;
+      $$(".nav-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      $$(".view").forEach(v => v.hidden = true);
+      $(`#view-${view}`).hidden = false;
+    });
+  });
+
   // Render KaTeX
   $$(".math-tex").forEach((el) => {
     katex.render(el.textContent, el, { throwOnError: false });
@@ -147,6 +158,7 @@ function renderAll() {
   renderAgents();
   renderMHNGChain();
   renderConvergence();
+  renderSamples();
 }
 
 function renderTask() {
@@ -192,9 +204,10 @@ function renderActivityFeed() {
   for (const p of proposals) {
     const time = p.created_at ? timeAgo(p.created_at) : "";
     const obs = p.observation_summary ? p.observation_summary.slice(0, 120) : "";
+    const pid = p.id || p.proposal_id || "";
     events.push({
       time: p.created_at || "",
-      html: `<div class="event event-propose ${isNew(p.created_at) ? 'event-new' : ''}">
+      html: `<div class="event event-propose clickable ${isNew(p.created_at) ? 'event-new' : ''}" data-proposal-id="${esc(pid)}">
         <span class="event-icon">&#x1F7E2;</span>
         <span class="event-agent">${esc(p.agent_id)}</span> proposed
         ${obs ? `<span class="event-obs">"${esc(obs)}${obs.length >= 120 ? '...' : ''}"</span>` : ''}
@@ -227,9 +240,25 @@ function renderActivityFeed() {
   feed.innerHTML = latest.map(e => e.html).join("") || '<div class="empty">Waiting for agent activity...</div>';
   $("#activity-count").textContent = events.length;
 
-  // Detect new events for animation
+  // Click handler for proposal details
+  feed.querySelectorAll("[data-proposal-id]").forEach(el => {
+    el.addEventListener("click", () => showProposalModal(el.dataset.proposalId));
+  });
+
   state.prevProposalCount = proposals.length;
   state.prevReviewCount = reviews.length;
+}
+
+function showProposalModal(proposalId) {
+  const p = state.proposals.find(x => (x.id || x.proposal_id) === proposalId);
+  if (!p) return;
+
+  $("#modal-title").textContent = `Proposal by ${p.agent_id}`;
+  $("#modal-meta").textContent = `Round ${p.round_index ?? '?'} | ${p.created_at ? new Date(p.created_at).toLocaleString() : ''}`;
+  $("#modal-proposed-w").innerHTML = DOMPurify.sanitize(marked.parse(p.proposed_w || "(empty)"));
+  $("#modal-reasoning").textContent = p.reasoning || "(no reasoning recorded)";
+  $("#modal-observations").textContent = p.observation_summary || "(no observations recorded)";
+  $("#proposal-modal").hidden = false;
 }
 
 function renderAgents() {
@@ -336,6 +365,54 @@ function renderConvergence() {
       <div class="conv-bar-label">R${ri}</div>
     </div>`;
   }).join("");
+}
+
+function renderSamples() {
+  const taskId = state.selectedTaskId;
+  const samples = state.samples.filter(s => s.task_id === taskId || !sb);
+  const list = $("#samples-list");
+  if (!list) return;
+
+  $("#samples-count").textContent = samples.length;
+
+  if (samples.length === 0) {
+    list.innerHTML = '<div class="empty">No samples yet</div>';
+    return;
+  }
+
+  // Show newest first
+  const sorted = [...samples].reverse();
+  list.innerHTML = sorted.map((s, i) => {
+    const idx = samples.length - 1 - i;
+    const status = s.accepted ? "accepted" : "rejected";
+    const statusCls = s.accepted ? "sample-accepted" : "sample-rejected";
+    const preview = (s.content || "").slice(0, 200);
+    return `<div class="sample-card ${statusCls}" data-sample-idx="${idx}">
+      <div class="sample-header">
+        <span class="sample-idx">w<sup>[${idx}]</sup></span>
+        <span class="sample-status ${statusCls}">${status}</span>
+        <span class="sample-round">Round ${s.round_index ?? '?'}</span>
+        <span class="sample-by">by ${esc(s.proposer_id || '?')}</span>
+        <span class="sample-time">${s.created_at ? timeAgo(s.created_at) : ''}</span>
+      </div>
+      <div class="sample-preview">${esc(preview)}${preview.length >= 200 ? '...' : ''}</div>
+    </div>`;
+  }).join("");
+
+  // Click to expand sample
+  list.querySelectorAll(".sample-card").forEach(el => {
+    el.addEventListener("click", () => {
+      const idx = parseInt(el.dataset.sampleIdx);
+      const s = samples[idx];
+      if (!s) return;
+      $("#modal-title").textContent = `Sample w[${idx}]`;
+      $("#modal-meta").textContent = `${s.accepted ? 'Accepted' : 'Rejected'} | Round ${s.round_index ?? '?'} | by ${s.proposer_id || '?'}`;
+      $("#modal-proposed-w").innerHTML = DOMPurify.sanitize(marked.parse(s.content || "(empty)"));
+      $("#modal-reasoning").textContent = "";
+      $("#modal-observations").textContent = "";
+      $("#proposal-modal").hidden = false;
+    });
+  });
 }
 
 // ===== Helpers =====
