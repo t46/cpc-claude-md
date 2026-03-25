@@ -280,30 +280,22 @@ class SupabaseAPIClient:
         if len(active_proposals) < 2:
             active_proposals = proposals  # Fallback if filter is too strict
 
-        indices = list(range(len(active_proposals)))
-        random.shuffle(indices)
+        # Every proposal gets a reviewer (different from proposer)
+        # Some agents may review multiple proposals
+        agent_ids = [p["agent_id"] for p in active_proposals]
         pairings = []
 
-        # Pair up: each proposer gets a different reviewer
-        for i in range(0, len(indices) - 1, 2):
-            p = {
-                "id": uuid4().hex[:12], "task_id": task_id, "round_index": ri,
-                "proposer_id": active_proposals[indices[i]]["agent_id"],
-                "reviewer_id": active_proposals[indices[i + 1]]["agent_id"],
-                "proposal_id": active_proposals[indices[i]]["id"],
-            }
-            pairings.append(p)
-
-        # Handle odd agent: assign the leftover proposal to an existing reviewer
-        if len(indices) % 2 == 1:
-            leftover = active_proposals[indices[-1]]
-            # Pick a reviewer from an existing pairing
-            reviewer_id = pairings[0]["reviewer_id"] if pairings else leftover["agent_id"]
+        for proposal in active_proposals:
+            # Pick a reviewer that is not the proposer
+            candidates = [aid for aid in agent_ids if aid != proposal["agent_id"]]
+            if not candidates:
+                candidates = agent_ids  # Fallback
+            reviewer_id = random.choice(candidates)
             pairings.append({
                 "id": uuid4().hex[:12], "task_id": task_id, "round_index": ri,
-                "proposer_id": leftover["agent_id"],
+                "proposer_id": proposal["agent_id"],
                 "reviewer_id": reviewer_id,
-                "proposal_id": leftover["id"],
+                "proposal_id": proposal["id"],
             })
 
         if pairings:
