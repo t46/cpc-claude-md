@@ -1,42 +1,43 @@
 /**
  * W Distribution Visualization
  *
- * Embeds w samples using Hugging Face API, projects to 1D via PCA,
+ * Embeds w samples using transformers.js (in-browser), projects to 1D via PCA,
  * and renders a kernel density estimate plot.
  * Slider controls which round's distribution is displayed.
  */
 
-const HF_MODEL = "sentence-transformers/all-MiniLM-L6-v2";
-const HF_API = `https://api-inference.huggingface.co/pipeline/feature-extraction/${HF_MODEL}`;
-
 // Cache embeddings to avoid re-computing
 const embeddingCache = new Map();
+let _pipeline = null;
+let _pipelineLoading = false;
+let _pipelineFailed = false;
 
-async function getEmbedding(text) {
-  const key = text.slice(0, 200); // Cache key
-  if (embeddingCache.has(key)) return embeddingCache.get(key);
+async function getEmbeddingPipeline() {
+  if (_pipeline) return _pipeline;
+  if (_pipelineFailed) return null;
+  if (_pipelineLoading) {
+    // Wait for loading to complete
+    while (_pipelineLoading) await new Promise(r => setTimeout(r, 200));
+    return _pipeline;
+  }
 
+  _pipelineLoading = true;
   try {
-    const resp = await fetch(HF_API, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ inputs: text.slice(0, 512) }), // Truncate for model limit
-    });
-    if (!resp.ok) return null;
-    const embedding = await resp.json();
-    // HF returns [[...vector...]] for single input
-    const vec = Array.isArray(embedding[0]) ? embedding[0] : embedding;
-    embeddingCache.set(key, vec);
-    return vec;
-  } catch {
+    const { pipeline } = await import("https://cdn.jsdelivr.net/npm/@huggingface/transformers@3/dist/transformers.min.js");
+    _pipeline = await pipeline("feature-extraction", "Xenova/all-MiniLM-L6-v2", { dtype: "fp32" });
+    return _pipeline;
+  } catch (e) {
+    console.error("Failed to load transformers.js:", e);
+    _pipelineFailed = true;
     return null;
+  } finally {
+    _pipelineLoading = false;
   }
 }
 
 async function getEmbeddings(texts) {
-  // Batch: try to get all at once, fall back to individual
+  const results = new Array(texts.length).fill(null);
   const uncached = [];
-  const results = new Array(texts.length);
 
   for (let i = 0; i < texts.length; i++) {
     const key = texts[i].slice(0, 200);
@@ -48,24 +49,17 @@ async function getEmbeddings(texts) {
   }
 
   if (uncached.length > 0) {
-    try {
-      const inputs = uncached.map(i => texts[i].slice(0, 512));
-      const resp = await fetch(HF_API, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inputs }),
-      });
-      if (resp.ok) {
-        const embeddings = await resp.json();
-        for (let j = 0; j < uncached.length; j++) {
-          const vec = Array.isArray(embeddings[j]) ? embeddings[j] : null;
-          if (vec) {
-            embeddingCache.set(texts[uncached[j]].slice(0, 200), vec);
-            results[uncached[j]] = vec;
-          }
-        }
-      }
-    } catch {}
+    const pipe = await getEmbeddingPipeline();
+    if (!pipe) return results;
+
+    for (const idx of uncached) {
+      try {
+        const output = await pipe(texts[idx].slice(0, 256), { pooling: "mean", normalize: true });
+        const vec = Array.from(output.data);
+        embeddingCache.set(texts[idx].slice(0, 200), vec);
+        results[idx] = vec;
+      } catch {}
+    }
   }
 
   return results;
