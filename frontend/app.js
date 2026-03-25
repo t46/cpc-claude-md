@@ -190,6 +190,7 @@ function renderAll() {
   renderDialogue();
   renderMHNGChain();
   renderConvergence();
+  renderDistribution();
   renderHistory();
   renderSamples();
 }
@@ -524,6 +525,42 @@ function renderConvergence() {
       <div class="conv-bar-label">R${ri}</div>
     </div>`;
   }).join("");
+}
+
+let _distSliderInit = false;
+function renderDistribution() {
+  const canvas = $("#distribution-canvas");
+  const slider = $("#round-slider");
+  const label = $("#round-slider-label");
+  if (!canvas || !slider) return;
+
+  const taskId = state.selectedTaskId;
+  const samples = state.samples.filter(s => s.task_id === taskId || !sb);
+  if (samples.length === 0) return;
+
+  const maxRound = Math.max(...samples.map(s => s.round_index || 0));
+  slider.max = maxRound;
+
+  if (!_distSliderInit) {
+    slider.value = maxRound;
+    slider.addEventListener("input", () => {
+      label.textContent = slider.value;
+      if (window.renderWDistribution) {
+        window.renderWDistribution(samples, parseInt(slider.value), canvas);
+      }
+    });
+    _distSliderInit = true;
+  }
+
+  // Auto-update to latest round
+  if (parseInt(slider.value) >= maxRound - 1) {
+    slider.value = maxRound;
+  }
+  label.textContent = slider.value;
+
+  if (window.renderWDistribution) {
+    window.renderWDistribution(samples, parseInt(slider.value), canvas);
+  }
 }
 
 function renderHistory() {

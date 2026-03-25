@@ -116,6 +116,17 @@
     </div>
   </section>
 
+  <!-- W Distribution -->
+  <section class="panel panel-full" id="panel-distribution">
+    <h2>W Distribution <span class="chart-info" title="Each w sample is embedded, projected to 1D via PCA, and shown as a kernel density estimate. Slide to see how the distribution evolves across rounds.">?</span></h2>
+    <div class="distribution-controls">
+      <label for="round-slider">Round:</label>
+      <input type="range" id="round-slider" min="0" max="0" value="0" />
+      <span id="round-slider-label">0</span>
+    </div>
+    <canvas id="distribution-canvas"></canvas>
+  </section>
+
   </div><!-- /view-dashboard -->
 
   <!-- History of w View -->
@@ -168,6 +179,7 @@
     </div>
   </div>
 
+  <script src="w-distribution.js"></script>
   <script src="app.js"></script>
   <script src="cpc-viz.js"></script>
 </body>
