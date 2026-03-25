@@ -196,6 +196,7 @@ function renderAll() {
   renderDialogue();
   renderMHNGChain();
   renderConvergence();
+  renderHistory();
   renderSamples();
 }
 
@@ -516,6 +517,42 @@ function renderConvergence() {
     return `<div class="conv-bar-wrap">
       <div class="conv-bar" style="height:${Math.max(4, pct)}%;background:var(--accent)" title="Round ${ri}: -LC = ${val.toFixed(3)}"></div>
       <div class="conv-bar-label">R${ri}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderHistory() {
+  const container = $("#w-history");
+  if (!container) return;
+
+  const taskId = state.selectedTaskId;
+  const samples = state.samples.filter(s => s.accepted && (s.task_id === taskId || !sb));
+
+  if (samples.length === 0) {
+    container.innerHTML = '<div class="empty">No accepted samples yet — w has not emerged.</div>';
+    return;
+  }
+
+  container.innerHTML = samples.map((s, i) => {
+    const contentHtml = DOMPurify.sanitize(marked.parse(s.content || ""));
+    const time = s.created_at ? new Date(s.created_at).toLocaleString() : "";
+    const proposer = s.proposer_id || "?";
+    const isLatest = i === samples.length - 1;
+
+    return `<div class="w-step ${isLatest ? 'w-step-current' : ''}">
+      <div class="w-step-marker">
+        <div class="w-step-dot ${isLatest ? 'current' : ''}"></div>
+        ${i < samples.length - 1 ? '<div class="w-step-line"></div>' : ''}
+      </div>
+      <div class="w-step-content">
+        <div class="w-step-header">
+          <span class="w-step-label">${isLatest ? 'w<sub>current</sub>' : 'w<sup>[' + i + ']</sup>'}</span>
+          <span class="w-step-round">Round ${s.round_index ?? '?'}</span>
+          <span class="w-step-by">by ${esc(proposer)}</span>
+          <span class="w-step-time">${time}</span>
+        </div>
+        <div class="w-step-body markdown-body">${contentHtml}</div>
+      </div>
     </div>`;
   }).join("");
 }

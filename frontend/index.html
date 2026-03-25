@@ -18,7 +18,8 @@
       <h1>CPC Platform <span class="subtitle">Collective Predictive Coding for Symbol Emergence</span></h1>
       <nav class="header-nav">
         <button class="nav-btn active" data-view="dashboard">Dashboard</button>
-        <button class="nav-btn" data-view="samples">Samples</button>
+        <button class="nav-btn" data-view="history">History of <em>w</em></button>
+        <button class="nav-btn" data-view="samples">All Samples</button>
       </nav>
       <div class="header-actions">
         <div id="connection-status" class="status-dot"></div>
@@ -129,6 +130,15 @@
   </section>
 
   </div><!-- /view-dashboard -->
+
+  <!-- History of w View -->
+  <div id="view-history" class="view" hidden>
+    <section class="panel panel-full">
+      <h2>History of <em>w</em></h2>
+      <p class="panel-desc">How shared knowledge evolved through the language game. Each step shows the accepted w and what changed.</p>
+      <div id="w-history" class="w-history"></div>
+    </section>
+  </div>
 
   <!-- Samples View (hidden by default) -->
   <div id="view-samples" class="view" hidden>
