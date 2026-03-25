@@ -45,6 +45,8 @@ class AgentRunner:
         task_id = self.config.task_id
         task_data = self._api("get", f"/tasks/{task_id}")
         task_description = task_data["description"]
+        if self.config.specialization:
+            task_description += f"\n\nYour specialization: {self.config.specialization}"
 
         # Phase 1: Pull w (sampled from W pool if available)
         w_data = self._api("get", f"/rounds/{task_id}/pull")

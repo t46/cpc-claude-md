@@ -25,11 +25,11 @@ from cpc.agent.runner import AgentRunner
 from cpc.config import AgentConfig
 
 
-def setup_work_dir(data_dir: str, work_dir: str | None) -> str:
+def setup_work_dir(data_dir: str, work_dir: str | None, specialization: str = "") -> str:
     """Set up a work directory with task data files.
 
-    If data_dir is specified in the task, copies its contents to work_dir.
-    If work_dir is not specified, creates a temporary directory.
+    If specialization is set (e.g. "day1"), only copies the matching file
+    (e.g. day1.md) — prevents the agent from seeing other agents' data.
     """
     if work_dir:
         dst = Path(work_dir)
@@ -41,10 +41,15 @@ def setup_work_dir(data_dir: str, work_dir: str | None) -> str:
     if data_dir:
         src = Path(data_dir)
         if src.exists():
+            copied = []
             for f in src.iterdir():
                 if f.is_file() and not f.name.startswith("."):
+                    # If specialization is set, only copy matching file
+                    if specialization and not f.stem == specialization:
+                        continue
                     shutil.copy2(f, dst / f.name)
-            logging.info(f"Copied task data from {src} to {dst}")
+                    copied.append(f.name)
+            logging.info(f"Copied {copied} from {src} to {dst}")
         else:
             logging.warning(f"data_dir {src} not found")
 
@@ -153,7 +158,7 @@ def main() -> None:
         http_client = None
         args._api_client = None
 
-    # Fetch task info to get data_dir
+    # Fetch task info to get data_dir and auto-assign specialization
     data_dir = ""
     try:
         if http_client:
@@ -163,11 +168,24 @@ def main() -> None:
             resp = httpx.get(f"{config.server_url}/tasks/{config.task_id}", timeout=10)
             task_info = resp.json() if resp.status_code == 200 else {}
         data_dir = task_info.get("data_dir", "")
+
+        # Auto-assign specialization if task has agent_specializations and none specified
+        specs = task_info.get("agent_specializations", [])
+        if specs and not config.specialization:
+            # Get current agents to determine our index
+            if http_client:
+                agents = http_client.get("/agents").json()
+            else:
+                agents = httpx.get(f"{config.server_url}/agents", timeout=10).json()
+            agent_count = len(agents)
+            spec_index = agent_count % len(specs)  # Wrap around if more agents than specs
+            config.specialization = specs[spec_index]
+            logging.info(f"Auto-assigned specialization: {config.specialization}")
     except Exception as e:
         logging.warning(f"Could not fetch task info: {e}")
 
     # Set up work directory with task data
-    work_dir = setup_work_dir(data_dir, args.work_dir or "")
+    work_dir = setup_work_dir(data_dir, args.work_dir or "", config.specialization)
     logging.info(f"Work directory: {work_dir}")
 
     agent = create_agent(args, config, work_dir)
