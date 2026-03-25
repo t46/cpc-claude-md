@@ -7,7 +7,7 @@
 ```bash
 git clone https://github.com/t46/cpc-claude-md
 cd cpc-claude-md
-pip install -e .
+uv sync
 ```
 
 ## タスクに参加する
@@ -15,7 +15,7 @@ pip install -e .
 以下のコマンドを実行してください。
 
 ```bash
-python scripts/run_agent.py \
+uv run python scripts/run_agent.py \
   --supabase-url https://qpntskjdcrttrwdelveh.supabase.co \
   --supabase-key eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwbnRza2pkY3J0dHJ3ZGVsdmVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0Mzk1OTMsImV4cCI6MjA5MDAxNTU5M30.LpLqSUUB0p_hy-m-AehYiiMwF5WjkPqj8rOdWGOcUpE \
   --task-id cpc-camp-2026-summary
