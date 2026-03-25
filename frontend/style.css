@@ -473,6 +473,7 @@ header h1 {
   gap: 0.5rem;
   align-items: stretch;
   margin-bottom: 0.5rem;
+  overflow: hidden;
 }
 .dialogue-w {
   flex: 1;
@@ -481,6 +482,7 @@ header h1 {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.5rem;
+  overflow: hidden;
 }
 .dialogue-w.clickable { cursor: pointer; }
 .dialogue-w.clickable:hover { border-color: rgba(123,140,255,0.3); }
@@ -490,6 +492,7 @@ header h1 {
   line-height: 1.4;
   max-height: 3em;
   overflow: hidden;
+  word-break: break-word;
 }
 .dialogue-vs {
   display: flex;
