@@ -232,16 +232,14 @@ function renderRoundTabs(containerId, rounds, selectedRound, onSelect) {
   const container = $(containerId);
   if (!container) return;
   const roundIndices = [...new Set(rounds.map(r => r.round_index ?? 0))].sort();
-  const tabs = [`<button class="round-tab ${selectedRound === null ? 'active' : ''}" data-round="all">All</button>`];
+  const options = [`<option value="all" ${selectedRound === null ? 'selected' : ''}>All rounds</option>`];
   for (const ri of roundIndices) {
-    tabs.push(`<button class="round-tab ${selectedRound === ri ? 'active' : ''}" data-round="${ri}">R${ri}</button>`);
+    options.push(`<option value="${ri}" ${selectedRound === ri ? 'selected' : ''}>Round ${ri}</option>`);
   }
-  container.innerHTML = tabs.join("");
-  container.querySelectorAll(".round-tab").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const val = btn.dataset.round;
-      onSelect(val === "all" ? null : parseInt(val));
-    });
+  container.innerHTML = `<select class="round-select">${options.join("")}</select>`;
+  container.querySelector(".round-select").addEventListener("change", (e) => {
+    const val = e.target.value;
+    onSelect(val === "all" ? null : parseInt(val));
   });
 }
 

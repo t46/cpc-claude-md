@@ -310,23 +310,27 @@ header h1 {
   flex-wrap: wrap;
 }
 .activity-header h2 { margin-bottom: 0; }
-.round-tabs { display: flex; gap: 0.2rem; flex-wrap: wrap; }
-.round-tab {
+.round-tabs { display: flex; }
+.round-select {
   background: var(--bg);
   border: 1px solid var(--border);
-  color: var(--text-muted);
-  padding: 0.2rem 0.5rem;
+  color: var(--text);
+  padding: 0.25rem 0.5rem;
   border-radius: var(--radius);
+  font-size: 0.8rem;
   cursor: pointer;
-  font-size: 0.7rem;
-  transition: all 0.2s;
+  min-width: 110px;
+  transition: border-color 0.2s;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b7d8e'%3E%3Cpath d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.5rem center;
+  padding-right: 1.5rem;
 }
-.round-tab:hover { color: var(--text); border-color: rgba(123,140,255,0.3); }
-.round-tab.active {
-  background: rgba(123,140,255,0.1);
-  color: var(--accent);
-  border-color: rgba(123,140,255,0.3);
-}
+.round-select:hover { border-color: rgba(123,140,255,0.3); }
+.round-select:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 8px rgba(123,140,255,0.15); }
+.round-select option { background: var(--bg-panel); color: var(--text); }
 .agent-toggles { display: flex; gap: 0.5rem; }
 .agent-select {
   background: var(--bg);
