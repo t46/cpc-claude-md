@@ -238,9 +238,10 @@ function renderActivityFeed() {
   for (const a of (state.agentActivity || [])) {
     const time = a.timestamp || a.created_at || "";
     const isToolUse = a.activity_type === "tool_use";
+    const isThinking = a.activity_type === "thinking";
     const isScore = a.activity_type === "review_score";
-    const icon = isToolUse ? "&#x1F527;" : isScore ? "&#x1F50D;" : "&#x26A1;";
-    const cls = isToolUse ? "event-tool" : isScore ? "event-score" : "event-status";
+    const icon = isToolUse ? "&#x1F527;" : isThinking ? "&#x1F4AD;" : isScore ? "&#x1F50D;" : "&#x26A1;";
+    const cls = isToolUse ? "event-tool" : isThinking ? "event-thinking" : isScore ? "event-score" : "event-status";
     events.push({ agent_id: a.agent_id, time, html: `<div class="event ${cls} ${isNew(time) ? 'event-new' : ''}"><span class="event-icon">${icon}</span><span class="event-agent">${esc(a.agent_id)}</span> <span class="event-detail">${esc(a.detail)}</span><span class="event-time">${timeAgo(time)}</span></div>` });
   }
 

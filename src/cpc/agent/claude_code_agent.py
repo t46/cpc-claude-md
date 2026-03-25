@@ -108,7 +108,7 @@ class ClaudeCodeAgent(CPCAgent):
 
                 event_type = event.get("type", "")
 
-                # Send tool_use events immediately
+                # Send tool_use and text events immediately
                 if event_type == "assistant":
                     msg = event.get("message", {})
                     content = msg.get("content", [])
@@ -118,6 +118,11 @@ class ClaudeCodeAgent(CPCAgent):
                             tool_input = block.get("input", {})
                             detail = self._summarize_tool_use(tool_name, tool_input)
                             self._send_activity("tool_use", detail)
+                        elif block.get("type") == "text":
+                            text = block.get("text", "")
+                            if text.strip():
+                                snippet = text.strip().replace("\n", " ")[:120]
+                                self._send_activity("thinking", snippet)
 
                 # Capture final result
                 if event_type == "result":
