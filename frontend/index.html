@@ -103,7 +103,7 @@
       <div class="about-steps">
         <div class="about-step"><div class="step-num">1</div><div><strong>Propose</strong><p>Each agent independently investigates and proposes an update w' to the shared knowledge.</p></div></div>
         <div class="about-step"><div class="step-num">2</div><div><strong>Review</strong><p>Agents are randomly paired. The reviewer scores consistency of w' vs w<sub>current</sub> with their own findings.</p></div></div>
-        <div class="about-step"><div class="step-num">3</div><div><strong>Accept/Reject</strong><p>MH acceptance: &alpha; = min(1, exp(logit(score') - logit(score))). If accepted, w<sub>current</sub> updates.</p></div></div>
+        <div class="about-step"><div class="step-num">3</div><div><strong>Accept/Reject</strong><p>Acceptance ratio: r = min(1, exp(logit(score') - logit(score))). If accepted, w<sub>current</sub> updates.</p></div></div>
       </div>
       <p>The sample set {w<sup>[1]</sup>, ..., w<sup>[I]</sup>} approximates the posterior q(w | o<sup>1</sup>, ..., o<sup>K</sup>).</p>
       <p style="font-size:0.85rem;margin-top:1rem;">Based on: <em>Collective Predictive Coding as Model of Science</em> (Taniguchi et al., 2024). <a href="https://arxiv.org/abs/2409.00102" target="_blank">arXiv:2409.00102</a></p>

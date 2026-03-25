@@ -207,7 +207,7 @@ function renderActivityFeed() {
     const time = r.created_at ? timeAgo(r.created_at) : "";
     const icon = r.accepted ? "&#x2705;" : "&#x274C;";
     const cls = r.accepted ? "event-accept" : "event-reject";
-    const alpha = typeof r.log_alpha === "number" ? `&alpha;=${Math.exp(Math.min(r.log_alpha, 5)).toFixed(2)}` : "";
+    const alpha = typeof r.log_alpha === "number" ? `r=${Math.exp(Math.min(r.log_alpha, 5)).toFixed(2)}` : "";
     events.push({
       time: r.created_at || "",
       html: `<div class="event ${cls} ${isNew(r.created_at) ? 'event-new' : ''}">
@@ -280,9 +280,9 @@ function renderMHNGChain() {
     for (const r of roundReviews) {
       const cls = r.accepted ? "chain-accept" : "chain-reject";
       const alpha = typeof r.log_alpha === "number" ? Math.exp(Math.min(r.log_alpha, 5)).toFixed(2) : "?";
-      html += `<div class="chain-node ${cls}" title="Round ${ri}: ${r.accepted ? 'accepted' : 'rejected'}\nscores: ${r.score_proposed?.toFixed(0)}/${r.score_current?.toFixed(0)}\n&alpha;=${alpha}">
+      html += `<div class="chain-node ${cls}" title="Round ${ri}: ${r.accepted ? 'accepted' : 'rejected'}\nscores: ${r.score_proposed?.toFixed(0)}/${r.score_current?.toFixed(0)}\nr=${alpha}">
         <div class="chain-round">R${ri}</div>
-        <div class="chain-alpha">&alpha;=${alpha}</div>
+        <div class="chain-alpha">r=${alpha}</div>
         <div class="chain-scores">${r.score_proposed?.toFixed(0) || '?'} / ${r.score_current?.toFixed(0) || '?'}</div>
       </div>`;
       html += `<div class="chain-edge ${cls}"></div>`;
