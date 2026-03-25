@@ -40,6 +40,7 @@ class MHNGEngine:
                 "id": task.task_id,
                 "description": task.description,
                 "initial_w": task.initial_w,
+                "data_dir": task.data_dir,
                 "docker_image": task.docker_image,
                 "max_rounds": task.max_rounds,
                 "convergence_threshold": task.convergence_threshold,

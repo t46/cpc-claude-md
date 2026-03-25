@@ -12,17 +12,12 @@ This is the most natural mapping to CPC-MS:
   - We only see the final output: w' (proposal) and score
 
 Usage:
-  agent = ClaudeCodeAgent(
-      work_dir="/path/to/project",
-      model="claude-sonnet-4-20250514",
-  )
+  agent = ClaudeCodeAgent(work_dir="/path/to/task/data")
 """
 
 from __future__ import annotations
 
 import asyncio
-import json
-import tempfile
 from pathlib import Path
 
 from cpc.agent.base import CPCAgent, ProposalOutput, ReviewScore
@@ -41,7 +36,7 @@ class ClaudeCodeAgent(CPCAgent):
         work_dir: str = ".",
         model: str = "claude-sonnet-4-20250514",
         max_turns: int = 20,
-        timeout: int = 300,
+        timeout: int = 600,
     ) -> None:
         self._work_dir = Path(work_dir)
         self._model = model
@@ -49,7 +44,7 @@ class ClaudeCodeAgent(CPCAgent):
         self._timeout = timeout
 
     async def _run_claude(self, prompt: str) -> str:
-        """Run `claude` CLI with a prompt and return its output."""
+        """Run `claude` CLI locally with a prompt and return its output."""
         proc = await asyncio.create_subprocess_exec(
             "claude",
             "--print",
@@ -103,20 +98,17 @@ You MUST end your response with EXACTLY this structure (including the markers):
         return self._parse_proposal(output)
 
     async def score(self, w: str, task_description: str) -> ReviewScore:
-        prompt = f"""You are reviewing a shared knowledge document as part of a Collective Predictive Coding (CPC) process.
+        prompt = f"""You are reviewing a shared document as part of a collaborative research process.
 
-## Research Problem
+## Task
 {task_description}
 
 ## Document to Evaluate
 {w}
 
 ## Instructions
-Based on your understanding of this codebase/problem, rate how accurate, complete, and well-supported
-this document is. Consider:
-- Are the findings supported by evidence?
-- Are there any factual errors or unsupported claims?
-- Does it address the key aspects of the research problem?
+Based on your understanding of the task and data files in this directory,
+rate how accurate, complete, and well-supported this document is.
 
 You MUST end your response with EXACTLY:
 ===SCORE===

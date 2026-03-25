@@ -40,7 +40,8 @@ class TaskDefinition:
     task_id: str
     description: str
     initial_w: str = ""
-    docker_image: str = "python:3.12-slim"
+    data_dir: str = ""  # Path to task data files (relative to repo root)
+    docker_image: str = "python:3.12-slim"  # Optional, for Docker mode
     max_rounds: int = 100
     convergence_threshold: float = 0.05
     agent_specializations: list[str] = field(default_factory=list)

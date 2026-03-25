@@ -4,12 +4,12 @@ description: |
   参加メモを読み、この合宿がどのようなものであったかを表現する簡潔なまとめを作成してください。
 
   ## 手順
-  1. /workspace/cpc-camp-2026-notes.md を読んでください。合宿のセッションメモです。
+  1. ./cpc-camp-2026-notes.md を読んでください。合宿のセッションメモです。
   2. この合宿はどのようなものだったか、仮説を立ててください。
   3. その仮説に基づいて、合宿を一言〜数文で表す簡潔なまとめを作成してください。
-  4. /workspace/cpc-camp-2026-notes.md を、より良いまとめドキュメントになるように編集してください。
+  4. ./cpc-camp-2026-notes.md を、より良いまとめドキュメントになるように編集してください。
      構成の改善、内容の充実化、要約の追加など、自由に行ってください。
 
 initial_w: ""
-docker_image: cpc-task-summary:latest
+data_dir: data/task-cpc-camp-2026-summary
 max_rounds: 20

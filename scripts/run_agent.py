@@ -1,13 +1,10 @@
 """Start a CPC agent.
 
 Usage:
-  # Claude Code agent (autonomous, uses `claude` CLI):
-  uv run python scripts/run_agent.py --task-id my-task --agent-type code
+  # Claude Code agent (recommended):
+  uv run python scripts/run_agent.py --task-id cpc-camp-2026-summary --server-url http://SERVER:8111
 
-  # LLM API agent (step-by-step, uses Anthropic API + Docker sandbox):
-  uv run python scripts/run_agent.py --task-id my-task --agent-type llm --sandbox docker
-
-  # Custom agent (implement CPCAgent in your own module):
+  # Custom agent:
   uv run python scripts/run_agent.py --task-id my-task --agent-type custom --agent-module my_agent.py
 """
 
@@ -17,19 +14,48 @@ import argparse
 import asyncio
 import importlib.util
 import logging
+import shutil
 import sys
+import tempfile
 import uuid
+from pathlib import Path
 
 from cpc.agent.base import CPCAgent
 from cpc.agent.runner import AgentRunner
 from cpc.config import AgentConfig
 
 
-def create_agent(args: argparse.Namespace, config: AgentConfig) -> CPCAgent:
+def setup_work_dir(data_dir: str, work_dir: str | None) -> str:
+    """Set up a work directory with task data files.
+
+    If data_dir is specified in the task, copies its contents to work_dir.
+    If work_dir is not specified, creates a temporary directory.
+    """
+    if work_dir:
+        dst = Path(work_dir)
+    else:
+        dst = Path(tempfile.mkdtemp(prefix="cpc-agent-"))
+
+    dst.mkdir(parents=True, exist_ok=True)
+
+    if data_dir:
+        src = Path(data_dir)
+        if src.exists():
+            for f in src.iterdir():
+                if f.is_file() and not f.name.startswith("."):
+                    shutil.copy2(f, dst / f.name)
+            logging.info(f"Copied task data from {src} to {dst}")
+        else:
+            logging.warning(f"data_dir {src} not found")
+
+    return str(dst)
+
+
+def create_agent(args: argparse.Namespace, config: AgentConfig, work_dir: str) -> CPCAgent:
     if args.agent_type == "code":
         from cpc.agent.claude_code_agent import ClaudeCodeAgent
         return ClaudeCodeAgent(
-            work_dir=args.work_dir,
+            work_dir=work_dir,
             model=config.model_name,
         )
 
@@ -51,7 +77,6 @@ def create_agent(args: argparse.Namespace, config: AgentConfig) -> CPCAgent:
         )
 
     elif args.agent_type == "custom":
-        # Load a custom CPCAgent from a Python file
         if not args.agent_module:
             print("Error: --agent-module is required for --agent-type custom")
             sys.exit(1)
@@ -64,7 +89,6 @@ def create_agent(args: argparse.Namespace, config: AgentConfig) -> CPCAgent:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        # Look for a create_agent() factory or the first CPCAgent subclass
         if hasattr(module, "create_agent"):
             return module.create_agent(config)
 
@@ -91,7 +115,7 @@ def main() -> None:
     parser.add_argument("--specialization", default="")
     parser.add_argument("--agent-type", choices=["llm", "code", "custom"], default="code")
     parser.add_argument("--agent-module", default="", help="Path to custom agent .py file")
-    parser.add_argument("--work-dir", default=".", help="Working directory for Claude Code agents")
+    parser.add_argument("--work-dir", default="", help="Working directory (auto-created if empty)")
     parser.add_argument("--sandbox", choices=["worktree", "docker"], default="docker")
     parser.add_argument("--docker-image", default="python:3.12-slim")
     parser.add_argument("--max-rounds", type=int, default=None)
@@ -112,20 +136,22 @@ def main() -> None:
         model_name=args.model,
     )
 
-    # Fetch task's docker_image from server (overrides CLI default)
-    if config.sandbox_type == "docker":
-        try:
-            import httpx
-            resp = httpx.get(f"{config.server_url}/tasks/{config.task_id}", timeout=10)
-            if resp.status_code == 200:
-                task_image = resp.json().get("docker_image", "")
-                if task_image:
-                    config.docker_image = task_image
-                    logging.info(f"Using task's Docker image: {task_image}")
-        except Exception as e:
-            logging.warning(f"Could not fetch task docker_image, using default: {e}")
+    # Fetch task info from server to get data_dir
+    data_dir = ""
+    try:
+        import httpx
+        resp = httpx.get(f"{config.server_url}/tasks/{config.task_id}", timeout=10)
+        if resp.status_code == 200:
+            task_info = resp.json()
+            data_dir = task_info.get("data_dir", "")
+    except Exception as e:
+        logging.warning(f"Could not fetch task info: {e}")
 
-    agent = create_agent(args, config)
+    # Set up work directory with task data
+    work_dir = setup_work_dir(data_dir, args.work_dir or "")
+    logging.info(f"Work directory: {work_dir}")
+
+    agent = create_agent(args, config, work_dir)
     runner = AgentRunner(config=config, agent=agent)
 
     asyncio.run(runner.run_loop(max_rounds=args.max_rounds))

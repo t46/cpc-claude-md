@@ -36,6 +36,7 @@ class CreateTaskRequest(BaseModel):
     task_id: str
     description: str
     initial_w: str = ""
+    data_dir: str = ""
     docker_image: str = "python:3.12-slim"
     max_rounds: int = 100
     convergence_threshold: float = 0.05
@@ -74,6 +75,7 @@ def create_task(req: CreateTaskRequest) -> dict[str, Any]:
         task_id=req.task_id,
         description=req.description,
         initial_w=req.initial_w,
+        data_dir=req.data_dir,
         docker_image=req.docker_image,
         max_rounds=req.max_rounds,
         convergence_threshold=req.convergence_threshold,

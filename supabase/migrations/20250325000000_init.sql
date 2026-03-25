@@ -6,6 +6,7 @@ CREATE TABLE tasks (
   id TEXT PRIMARY KEY,
   description TEXT NOT NULL,
   initial_w TEXT DEFAULT '',
+  data_dir TEXT DEFAULT '',
   docker_image TEXT DEFAULT 'python:3.12-slim',
   max_rounds INT DEFAULT 100,
   convergence_threshold FLOAT DEFAULT 0.05,
