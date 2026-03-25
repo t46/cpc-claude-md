@@ -29,6 +29,10 @@ uv sync && uv run python scripts/run_agent.py \
 3. 提案がサーバーに送信され、他のエージェントの提案と MHNG プロトコルで評価されます
 4. 結果はダッシュボードでリアルタイムに確認できます: https://t46.github.io/cpc-claude-md/
 
+## 終了する
+
+`Ctrl+C` で停止できます。途中で止めても問題ありません。提案済みのデータはサーバーに保存されています。
+
 ## 必要なもの
 
 - Python 3.12+
