@@ -423,8 +423,10 @@ function showProposalModal(proposalId) {
   $("#modal-title").textContent = `Proposal by ${p.agent_id}`;
   $("#modal-meta").textContent = `Round ${p.round_index ?? '?'} | ${p.created_at ? new Date(p.created_at).toLocaleString() : ''}`;
   $("#modal-proposed-w").innerHTML = DOMPurify.sanitize(marked.parse(p.proposed_w || "(empty)"));
-  $("#modal-reasoning").innerHTML = DOMPurify.sanitize(marked.parse(p.reasoning || "(no reasoning recorded)"));
-  $("#modal-observations").innerHTML = DOMPurify.sanitize(marked.parse(p.observation_summary || "(no observations recorded)"));
+  $("#modal-reasoning").innerHTML = DOMPurify.sanitize(marked.parse(p.reasoning || ""));
+  $("#modal-observations").innerHTML = DOMPurify.sanitize(marked.parse(p.observation_summary || ""));
+  const hasExtra = (p.reasoning || "").trim() || (p.observation_summary || "").trim();
+  $("#modal-details").hidden = !hasExtra;
   $("#proposal-modal").hidden = false;
 }
 
@@ -676,6 +678,7 @@ function renderHistory() {
       $("#modal-proposed-w").innerHTML = DOMPurify.sanitize(marked.parse(content || "(empty)"));
       $("#modal-reasoning").textContent = "";
       $("#modal-observations").textContent = "";
+      $("#modal-details").hidden = true;
       $("#proposal-modal").hidden = false;
     });
   });

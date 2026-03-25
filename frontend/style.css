@@ -695,11 +695,11 @@ header h1 {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 1.5rem;
-  max-width: 700px;
-  max-height: 80vh;
+  padding: 1.5rem 2rem;
+  max-width: 900px;
+  max-height: 90vh;
   overflow-y: auto;
-  width: 90%;
+  width: 95%;
   position: relative;
 }
 .modal h2 { margin-bottom: 0.5rem; }
@@ -715,7 +715,14 @@ header h1 {
   cursor: pointer;
 }
 .modal-close:hover { color: var(--text); }
-.modal-meta { font-size: 0.8rem; color: var(--text-muted); }
+.modal-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; }
+.modal-extra { margin-top: 1.5rem; }
+.modal-extra summary {
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.modal-extra summary:hover { color: var(--text); }
 .modal-section {
   font-size: 0.85rem;
   padding: 0.5rem;
