@@ -567,12 +567,15 @@ header h1 {
 .chain-scroll {
   overflow-x: auto;
   padding: 0.5rem 0;
+  max-height: 300px;
+  overflow-y: auto;
 }
 .chain-line {
   display: flex;
   align-items: center;
   gap: 0;
-  min-width: max-content;
+  flex-wrap: wrap;
+  row-gap: 0.5rem;
 }
 .chain-node {
   display: flex;
