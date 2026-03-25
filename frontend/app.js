@@ -741,7 +741,7 @@ function isNew(ts) {
 function getAgentStatus(lastSeen) {
   if (!lastSeen) return "offline";
   const diff = (Date.now() - new Date(lastSeen).getTime()) / 1000;
-  if (diff < 60) return "active";
-  if (diff < 300) return "idle";
+  if (diff < 120) return "active";
+  if (diff < 600) return "idle";  // 10 min — Claude Code can take several minutes per turn
   return "offline";
 }

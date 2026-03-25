@@ -141,7 +141,8 @@ function drawDensity(canvas, densities, options = {}) {
     ctx.fillStyle = "rgba(107, 125, 142, 0.5)";
     ctx.font = "italic 13px sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("Waiting for embeddings...", W / 2, H / 2);
+    const msg = densities === false ? "Embedding API unavailable" : "Waiting for embeddings...";
+    ctx.fillText(msg, W / 2, H / 2);
     return;
   }
 
@@ -223,7 +224,7 @@ async function renderWDistribution(samples, roundIndex, canvas) {
   }
 
   if (validEmbeddings.length < 2) {
-    drawDensity(canvas, null);
+    drawDensity(canvas, validEmbeddings.length === 0 ? false : null);
     return;
   }
 
