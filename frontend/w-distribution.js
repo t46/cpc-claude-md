@@ -197,8 +197,8 @@ function drawDensity(canvas, densities, options = {}) {
 
 // Main: render distribution for a specific round
 async function renderWDistribution(samples, roundIndex, canvas) {
-  // Filter samples for this round or all rounds up to this one
-  const roundSamples = samples.filter(s => s.round_index <= roundIndex);
+  // Filter samples for this specific round only
+  const roundSamples = samples.filter(s => s.round_index === roundIndex);
   if (roundSamples.length === 0) {
     drawDensity(canvas, null);
     return;
