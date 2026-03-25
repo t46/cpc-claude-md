@@ -81,8 +81,21 @@
         <span class="stat-label">Round</span>
         <span id="stat-round" class="stat-value">0</span>
       </div>
+      <div class="stat">
+        <span class="stat-label">Log-Compat.</span>
+        <span id="stat-logcompat" class="stat-value">-</span>
+      </div>
     </div>
-    <div id="convergence-bars" class="convergence-bars"></div>
+    <div class="convergence-charts">
+      <div class="chart-section">
+        <h3 class="chart-title">Acceptance Rate per Round</h3>
+        <div id="convergence-bars" class="convergence-bars"></div>
+      </div>
+      <div class="chart-section">
+        <h3 class="chart-title">Log-Compatibility <span class="chart-info" title="Σ logit(score_k(w)) — how well w explains agents' hypotheses. Higher = better fit. Related to but not identical to the ELBO.">?</span></h3>
+        <div id="logcompat-chart" class="convergence-bars"></div>
+      </div>
+    </div>
   </section>
 
   </div><!-- /view-dashboard -->

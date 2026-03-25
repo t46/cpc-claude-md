@@ -365,6 +365,57 @@ function renderConvergence() {
       <div class="conv-bar-label">R${ri}</div>
     </div>`;
   }).join("");
+
+  // Log-compatibility chart: Σ logit(score_k(w)) per round
+  // logit(s) = ln(s / (100 - s + 0.5)), approximating ln p(z^k | w)
+  const reviews = state.reviews.filter(r => r.task_id === taskId || !sb);
+  const logitScore = (s) => {
+    s = Math.max(0.5, Math.min(99.5, s));
+    return Math.log(s / (100 - s + 0.5));
+  };
+
+  const logCompatByRound = {};
+  for (const r of reviews) {
+    const ri = r.round_index || 0;
+    if (!logCompatByRound[ri]) logCompatByRound[ri] = { sum: 0, count: 0 };
+    const sp = r.score_proposed ?? 50;
+    logCompatByRound[ri].sum += logitScore(sp);
+    logCompatByRound[ri].count++;
+  }
+
+  const lcRoundKeys = Object.keys(logCompatByRound).map(Number).sort();
+  const lcChart = $("#logcompat-chart");
+
+  if (lcRoundKeys.length === 0) {
+    lcChart.innerHTML = '<div class="empty">No data yet</div>';
+    $("#stat-logcompat").textContent = "-";
+    return;
+  }
+
+  // Compute per-round average log-compatibility
+  const lcValues = lcRoundKeys.map(ri => {
+    const d = logCompatByRound[ri];
+    return d.count > 0 ? d.sum / d.count : 0;
+  });
+
+  // Show latest value in stat
+  const latestLC = lcValues[lcValues.length - 1];
+  $("#stat-logcompat").textContent = latestLC.toFixed(2);
+
+  // Normalize for bar display: shift so min is near 0
+  const lcMin = Math.min(...lcValues);
+  const lcMax = Math.max(...lcValues);
+  const lcRange = Math.max(lcMax - lcMin, 0.1);
+
+  lcChart.innerHTML = lcRoundKeys.map((ri, i) => {
+    const val = lcValues[i];
+    const pct = ((val - lcMin) / lcRange) * 100;
+    const color = val >= 0 ? "var(--green)" : "var(--accent)";
+    return `<div class="conv-bar-wrap">
+      <div class="conv-bar" style="height:${Math.max(4, pct)}%;background:${color}" title="Round ${ri}: avg logit(score) = ${val.toFixed(3)}"></div>
+      <div class="conv-bar-label">R${ri}</div>
+    </div>`;
+  }).join("");
 }
 
 function renderSamples() {
