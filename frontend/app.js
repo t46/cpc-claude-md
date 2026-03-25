@@ -82,17 +82,19 @@ async function fetchAll() {
 }
 
 async function fetchFromSupabase() {
-  const [tasks, agents, proposals, reviews, samples, rounds] = await Promise.all([
+  const [tasks, agents, proposals, reviews, samples, rounds, activity] = await Promise.all([
     sb.from("tasks").select("*").order("created_at"),
     sb.from("agents").select("*").order("registered_at"),
     sb.from("proposals").select("*").order("created_at"),
     sb.from("reviews").select("*").order("created_at"),
     sb.from("samples").select("*").order("created_at"),
     sb.from("rounds").select("*").order("round_index"),
+    sb.from("activity").select("*").order("created_at", { ascending: false }).limit(50),
   ]);
   state.tasks = tasks.data || [];
   state.agents = agents.data || [];
   state.proposals = proposals.data || [];
+  state.agentActivity = activity.data || [];
   state.reviews = reviews.data || [];
   state.samples = samples.data || [];
   state.rounds = rounds.data || [];
@@ -242,15 +244,15 @@ function renderActivityFeed() {
   // Add live agent activity (tool_use, status events)
   const activities = state.agentActivity || [];
   for (const a of activities) {
-    const time = a.timestamp ? timeAgo(a.timestamp) : "";
+    const time = a.timestamp || a.created_at ? timeAgo(a.timestamp || a.created_at) : "";
     const isToolUse = a.activity_type === "tool_use";
     const isStatus = a.activity_type === "status";
     const isScore = a.activity_type === "review_score";
     const icon = isToolUse ? "&#x1F527;" : isScore ? "&#x1F50D;" : "&#x26A1;";
     const cls = isToolUse ? "event-tool" : isScore ? "event-score" : "event-status";
     events.push({
-      time: a.timestamp || "",
-      html: `<div class="event ${cls} ${isNew(a.timestamp) ? 'event-new' : ''}">
+      time: a.timestamp || a.created_at || "",
+      html: `<div class="event ${cls} ${isNew(a.timestamp || a.created_at) ? 'event-new' : ''}">
         <span class="event-icon">${icon}</span>
         <span class="event-agent">${esc(a.agent_id)}</span>
         <span class="event-detail">${esc(a.detail)}</span>

@@ -143,12 +143,18 @@ class SupabaseAPIClient:
 
         # POST /activity
         if path == "/activity" and method == "POST":
-            return {"status": "ok"}  # Activity not stored in Supabase for now
+            self._sb("POST", "/activity", json={
+                "agent_id": json["agent_id"],
+                "task_id": json["task_id"],
+                "activity_type": json["activity_type"],
+                "detail": json.get("detail", ""),
+            })
+            return {"status": "ok"}
 
         # GET /activity/{task_id}
         m = re.match(r"/activity/(.+)$", path)
         if m and method == "GET":
-            return []
+            return self._sb("GET", f"/activity?task_id=eq.{m.group(1)}&order=created_at.desc&limit=50")
 
         raise ValueError(f"Unknown route: {method} {path}")
 

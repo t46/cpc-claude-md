@@ -54,14 +54,13 @@ def setup_work_dir(data_dir: str, work_dir: str | None) -> str:
 def create_agent(args: argparse.Namespace, config: AgentConfig, work_dir: str) -> CPCAgent:
     if args.agent_type == "code":
         from cpc.agent.claude_code_agent import ClaudeCodeAgent
-        # In Supabase mode, don't send activity to FastAPI server
-        activity_url = "" if args.supabase_url else config.server_url
         return ClaudeCodeAgent(
             work_dir=work_dir,
             model=config.model_name,
             agent_id=config.agent_id,
-            server_url=activity_url,
+            server_url="" if args.supabase_url else config.server_url,
             task_id=config.task_id,
+            api_client=getattr(args, '_api_client', None),
         )
 
     elif args.agent_type == "llm":
@@ -148,11 +147,11 @@ def main() -> None:
     if args.supabase_url and args.supabase_key:
         from cpc.supabase_client import SupabaseAPIClient
         http_client = SupabaseAPIClient(args.supabase_url, args.supabase_key)
-        server_url_for_agent = args.supabase_url  # For activity streaming
+        args._api_client = http_client  # Pass to ClaudeCodeAgent for activity
         logging.info(f"Using Supabase direct mode: {args.supabase_url}")
     else:
-        http_client = None  # Runner will create its own httpx.Client
-        server_url_for_agent = config.server_url
+        http_client = None
+        args._api_client = None
 
     # Fetch task info to get data_dir
     data_dir = ""

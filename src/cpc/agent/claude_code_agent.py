@@ -33,6 +33,7 @@ class ClaudeCodeAgent(CPCAgent):
         agent_id: str = "",
         server_url: str = "",
         task_id: str = "",
+        api_client=None,
     ) -> None:
         self._work_dir = Path(work_dir)
         self._model = model
@@ -41,24 +42,31 @@ class ClaudeCodeAgent(CPCAgent):
         self._agent_id = agent_id
         self._server_url = server_url
         self._task_id = task_id
+        self._api_client = api_client  # SupabaseAPIClient or None
 
     def _send_activity(self, activity_type: str, detail: str) -> None:
-        """Send activity event to server (fire-and-forget)."""
-        if not self._server_url:
-            return
+        """Send activity event (fire-and-forget)."""
         try:
-            httpx.post(
-                f"{self._server_url}/activity",
-                json={
+            if self._api_client:
+                self._api_client.post("/activity", json={
                     "agent_id": self._agent_id,
                     "task_id": self._task_id,
                     "activity_type": activity_type,
                     "detail": detail,
-                },
-                timeout=5,
-            )
+                })
+            elif self._server_url:
+                httpx.post(
+                    f"{self._server_url}/activity",
+                    json={
+                        "agent_id": self._agent_id,
+                        "task_id": self._task_id,
+                        "activity_type": activity_type,
+                        "detail": detail,
+                    },
+                    timeout=5,
+                )
         except Exception:
-            pass  # Non-critical, don't block agent
+            pass
 
     async def _run_claude(self, prompt: str, phase: str = "") -> str:
         """Run `claude` CLI with stream-json, send tool_use events in real-time."""
