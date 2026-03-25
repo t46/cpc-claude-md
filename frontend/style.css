@@ -103,6 +103,7 @@ header h1 {
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid rgba(123,140,255,0.15);
+  min-height: 280px;
 }
 #cpc-canvas {
   position: absolute;
