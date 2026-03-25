@@ -398,6 +398,9 @@ header h1 {
 .dialogue-card.dialogue-accepted { border-left: 3px solid var(--green); }
 .dialogue-card.dialogue-rejected { border-left: 3px solid var(--red); }
 .dialogue-card.dialogue-pending { border-left: 3px solid var(--text-muted); opacity: 0.7; }
+.dialogue-card.dialogue-reviewing { border-left: 3px solid var(--yellow); animation: pulse 2s ease-in-out infinite; }
+.agent-icon { font-size: 1rem; }
+.agent-icon-small { font-size: 0.9rem; flex-shrink: 0; }
 .dialogue-agents {
   display: flex;
   align-items: center;

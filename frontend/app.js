@@ -290,8 +290,10 @@ function renderDialogue() {
       time: r.created_at || "",
       html: `<div class="dialogue-card ${resultCls} ${isNew(r.created_at) ? 'event-new' : ''}">
         <div class="dialogue-agents">
+          <span class="agent-icon">&#x1F916;</span>
           <span class="dialogue-speaker">${esc(proposal.agent_id)}</span>
           <span class="dialogue-arrow">&#x27A1;</span>
+          <span class="agent-icon">&#x1F916;</span>
           <span class="dialogue-listener">${esc(r.reviewer_id)}</span>
         </div>
         <div class="dialogue-comparison">
@@ -315,27 +317,41 @@ function renderDialogue() {
     });
   }
 
-  // Also show pending proposals (not yet reviewed)
+  // Show pending proposals — check if paired (reviewer evaluating) or not yet paired
   const reviewedProposalIds = new Set(reviews.map(r => r.proposal_id));
+
+  // Build a map of proposal_id -> reviewer from activity events
+  const scoringAgents = new Set();
+  for (const a of (state.agentActivity || [])) {
+    if (a.activity_type === "status" && a.detail === "scoring") scoringAgents.add(a.agent_id);
+  }
+
   for (const p of proposals) {
     const pid = p.id || p.proposal_id;
     if (reviewedProposalIds.has(pid)) continue;
     const preview = (p.proposed_w || "").slice(0, 150);
+
+    // Check if any activity suggests this is being reviewed
+    const isBeingReviewed = scoringAgents.size > 0;
+    const statusText = isBeingReviewed ? "evaluating..." : "awaiting pair";
+    const statusCls = isBeingReviewed ? "dialogue-reviewing" : "dialogue-pending";
+    const statusIcon = isBeingReviewed ? "&#x1F914;" : "&#x23F3;";
+
     dialogues.push({
       time: p.created_at || "",
-      html: `<div class="dialogue-card dialogue-pending ${isNew(p.created_at) ? 'event-new' : ''}">
+      html: `<div class="dialogue-card ${statusCls} ${isNew(p.created_at) ? 'event-new' : ''}">
         <div class="dialogue-agents">
+          <span class="agent-icon">&#x1F916;</span>
           <span class="dialogue-speaker">${esc(p.agent_id)}</span>
-          <span class="dialogue-arrow">&#x2026;</span>
-          <span class="dialogue-listener">awaiting pair</span>
+          <span class="dialogue-arrow">${statusIcon}</span>
+          <span class="dialogue-listener">${statusText}</span>
         </div>
-        <div class="dialogue-body">
-          <div class="dialogue-proposal clickable" data-proposal-id="${esc(pid)}">
-            <div class="dialogue-label">proposes w'</div>
-            <div class="dialogue-preview">${esc(preview)}${preview.length >= 150 ? '...' : ''}</div>
+        <div class="dialogue-comparison">
+          <div class="dialogue-w clickable" data-proposal-id="${esc(pid)}">
+            <div class="dialogue-label">w' (proposed)</div>
+            <div class="dialogue-w-preview">${esc(preview)}${preview.length >= 150 ? '...' : ''}</div>
           </div>
         </div>
-        <div class="dialogue-time">${timeAgo(p.created_at)}</div>
       </div>`
     });
   }
@@ -381,6 +397,7 @@ function renderAgents() {
     const statusLabel = status === "active" ? "active" : status === "idle" ? "idle" : "offline";
     const lastSeenText = lastSeen ? timeAgo(lastSeen) : "never";
     return `<div class="agent-card">
+      <span class="agent-icon-small">&#x1F916;</span>
       <span class="agent-dot ${status}"></span>
       <div class="agent-info">
         <span class="agent-name">${esc(id)}</span>
