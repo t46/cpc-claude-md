@@ -201,8 +201,8 @@ You MUST end your response with EXACTLY this structure (including the markers):
 {w}
 
 ## Instructions
-Based on your understanding of the task and data files in this directory,
-rate how accurate, complete, and well-supported this document is.
+You have already read the data files in the previous step. Do NOT read them again.
+Based on your understanding from that investigation, rate how good this document is.
 
 You MUST end your response with EXACTLY:
 ===SCORE===
