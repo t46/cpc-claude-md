@@ -69,9 +69,20 @@ class AgentRunner:
         })
         logger.info(f"Submitted proposal {data['proposal_id']}")
 
-        # Phase 4: Review (if assigned)
-        assignment = self._api("get", f"/rounds/{task_id}/review-assignment/{self.config.agent_id}")
-        if assignment.get("status") != "no_assignment":
+        # Phase 4: Review — poll until pairing is done or round completes
+        assignment = None
+        for _ in range(60):  # Poll for up to 5 minutes
+            resp = self._api("get", f"/rounds/{task_id}/review-assignment/{self.config.agent_id}")
+            if resp.get("status") != "no_assignment":
+                assignment = resp
+                break
+            # Check if round already completed (no review for us)
+            rnd = self._api("get", f"/rounds/{task_id}/current")
+            if rnd.get("phase") == "completed":
+                break
+            await asyncio.sleep(5)
+
+        if assignment is not None:
             logger.info(f"Reviewing proposal {assignment['proposal_id']}")
             review_result = await run_review(
                 agent=self.agent,

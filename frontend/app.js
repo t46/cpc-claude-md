@@ -3,7 +3,7 @@
 const SUPABASE_URL = "";  // e.g. "https://xxx.supabase.co"
 const SUPABASE_ANON_KEY = "";
 const API_URL = "http://localhost:8111";  // FastAPI server fallback
-const DEFAULT_TASK_ID = "demo-perf";  // Set this to your task ID when using FastAPI mode
+const DEFAULT_TASK_ID = "cpc-camp-2026-summary";  // Set this to your task ID when using FastAPI mode
 
 // Use Supabase if configured, otherwise fall back to FastAPI REST
 let sb = null;
@@ -166,7 +166,8 @@ function renderTask() {
   const task = state.tasks.find(t => (t.id || t.task_id) === taskId);
   if (task) {
     const desc = task.description || "";
-    $("#task-description").textContent = desc.length > 300 ? desc.slice(0, 300) + "..." : desc;
+    const truncDesc = desc.length > 300 ? desc.slice(0, 300) + "..." : desc;
+    $("#task-description").innerHTML = DOMPurify.sanitize(marked.parse(truncDesc));
 
     const maxRounds = task.max_rounds || 100;
     const currentRound = state.rounds.length > 0
@@ -220,7 +221,7 @@ function renderActivityFeed() {
     const time = r.created_at ? timeAgo(r.created_at) : "";
     const icon = r.accepted ? "&#x2705;" : "&#x274C;";
     const cls = r.accepted ? "event-accept" : "event-reject";
-    const alpha = typeof r.log_alpha === "number" ? `r=${Math.exp(Math.min(r.log_alpha, 5)).toFixed(2)}` : "";
+    const alpha = typeof r.log_alpha === "number" ? `r=${Math.min(1, Math.exp(Math.min(r.log_alpha, 5))).toFixed(2)}` : "";
     events.push({
       time: r.created_at || "",
       html: `<div class="event ${cls} ${isNew(r.created_at) ? 'event-new' : ''}">
@@ -256,8 +257,8 @@ function showProposalModal(proposalId) {
   $("#modal-title").textContent = `Proposal by ${p.agent_id}`;
   $("#modal-meta").textContent = `Round ${p.round_index ?? '?'} | ${p.created_at ? new Date(p.created_at).toLocaleString() : ''}`;
   $("#modal-proposed-w").innerHTML = DOMPurify.sanitize(marked.parse(p.proposed_w || "(empty)"));
-  $("#modal-reasoning").textContent = p.reasoning || "(no reasoning recorded)";
-  $("#modal-observations").textContent = p.observation_summary || "(no observations recorded)";
+  $("#modal-reasoning").innerHTML = DOMPurify.sanitize(marked.parse(p.reasoning || "(no reasoning recorded)"));
+  $("#modal-observations").innerHTML = DOMPurify.sanitize(marked.parse(p.observation_summary || "(no observations recorded)"));
   $("#proposal-modal").hidden = false;
 }
 
@@ -308,7 +309,7 @@ function renderMHNGChain() {
     const roundReviews = byRound[ri];
     for (const r of roundReviews) {
       const cls = r.accepted ? "chain-accept" : "chain-reject";
-      const alpha = typeof r.log_alpha === "number" ? Math.exp(Math.min(r.log_alpha, 5)).toFixed(2) : "?";
+      const alpha = typeof r.log_alpha === "number" ? Math.min(1, Math.exp(Math.min(r.log_alpha, 5))).toFixed(2) : "?";
       html += `<div class="chain-node ${cls}" title="Round ${ri}: ${r.accepted ? 'accepted' : 'rejected'}\nscores: ${r.score_proposed?.toFixed(0)}/${r.score_current?.toFixed(0)}\nr=${alpha}">
         <div class="chain-round">R${ri}</div>
         <div class="chain-alpha">r=${alpha}</div>
@@ -409,6 +410,7 @@ function renderSamples() {
     const status = s.accepted ? "accepted" : "rejected";
     const statusCls = s.accepted ? "sample-accepted" : "sample-rejected";
     const preview = (s.content || "").slice(0, 200);
+    const previewHtml = DOMPurify.sanitize(marked.parse(preview + (preview.length >= 200 ? '...' : '')));
     return `<div class="sample-card ${statusCls}" data-sample-idx="${idx}">
       <div class="sample-header">
         <span class="sample-idx">w<sup>[${idx}]</sup></span>
@@ -417,7 +419,7 @@ function renderSamples() {
         <span class="sample-by">by ${esc(s.proposer_id || '?')}</span>
         <span class="sample-time">${s.created_at ? timeAgo(s.created_at) : ''}</span>
       </div>
-      <div class="sample-preview">${esc(preview)}${preview.length >= 200 ? '...' : ''}</div>
+      <div class="sample-preview">${previewHtml}</div>
     </div>`;
   }).join("");
 
