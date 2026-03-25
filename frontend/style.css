@@ -401,6 +401,11 @@ header h1 {
 .dialogue-card.dialogue-reviewing { border-left: 3px solid var(--yellow); animation: pulse 2s ease-in-out infinite; }
 .agent-icon { font-size: 1rem; }
 .agent-icon-small { font-size: 0.9rem; flex-shrink: 0; }
+.dialogue-evaluating {
+  font-size: 0.75rem;
+  color: var(--yellow);
+  animation: pulse 2s ease-in-out infinite;
+}
 .dialogue-agents {
   display: flex;
   align-items: center;

@@ -96,7 +96,7 @@ async function fetchAll() {
 }
 
 async function fetchFromSupabase() {
-  const [tasks, agents, proposals, reviews, samples, rounds, activity, wPool] = await Promise.all([
+  const [tasks, agents, proposals, reviews, samples, rounds, activity, wPool, pairingsRes] = await Promise.all([
     sb.from("tasks").select("*").order("created_at"),
     sb.from("agents").select("*").order("registered_at"),
     sb.from("proposals").select("*").order("created_at"),
@@ -105,12 +105,14 @@ async function fetchFromSupabase() {
     sb.from("rounds").select("*").order("round_index"),
     sb.from("activity").select("*").order("created_at", { ascending: false }).limit(50),
     sb.from("w_pool").select("*").order("slot_index"),
+    sb.from("pairings").select("*").order("created_at"),
   ]);
   state.tasks = tasks.data || [];
   state.agents = agents.data || [];
   state.proposals = proposals.data || [];
   state.agentActivity = activity.data || [];
   state.wPool = wPool.data || [];
+  state.pairings = pairingsRes.data || [];
   state.reviews = reviews.data || [];
   state.samples = samples.data || [];
   state.rounds = rounds.data || [];
@@ -317,36 +319,46 @@ function renderDialogue() {
     });
   }
 
-  // Show pending proposals — check if paired (reviewer evaluating) or not yet paired
+  // Show pending proposals — use pairing data to show who is evaluating whom
   const reviewedProposalIds = new Set(reviews.map(r => r.proposal_id));
+  const pairings = state.pairings || [];
 
-  // Build a map of proposal_id -> reviewer from activity events
-  const scoringAgents = new Set();
-  for (const a of (state.agentActivity || [])) {
-    if (a.activity_type === "status" && a.detail === "scoring") scoringAgents.add(a.agent_id);
+  // Map proposal_id -> pairing (who is reviewing it)
+  const pairingByProposal = {};
+  for (const pr of pairings) {
+    pairingByProposal[pr.proposal_id] = pr;
   }
 
   for (const p of proposals) {
     const pid = p.id || p.proposal_id;
     if (reviewedProposalIds.has(pid)) continue;
     const preview = (p.proposed_w || "").slice(0, 150);
+    const wPreview = (p.current_w || "").slice(0, 100);
 
-    // Check if any activity suggests this is being reviewed
-    const isBeingReviewed = scoringAgents.size > 0;
-    const statusText = isBeingReviewed ? "evaluating..." : "awaiting pair";
-    const statusCls = isBeingReviewed ? "dialogue-reviewing" : "dialogue-pending";
-    const statusIcon = isBeingReviewed ? "&#x1F914;" : "&#x23F3;";
+    const pairing = pairingByProposal[pid];
+    const isPaired = !!pairing;
+    const reviewerId = isPaired ? pairing.reviewer_id : null;
+    const statusCls = isPaired ? "dialogue-reviewing" : "dialogue-pending";
+    const statusIcon = isPaired ? "&#x1F914;" : "&#x23F3;";
+    const statusText = isPaired ? "evaluating..." : "awaiting pair";
 
     dialogues.push({
       time: p.created_at || "",
-      html: `<div class="dialogue-card ${statusCls} ${isNew(p.created_at) ? 'event-new' : ''}">
+      html: `<div class="dialogue-card ${statusCls}">
         <div class="dialogue-agents">
           <span class="agent-icon">&#x1F916;</span>
           <span class="dialogue-speaker">${esc(p.agent_id)}</span>
           <span class="dialogue-arrow">${statusIcon}</span>
-          <span class="dialogue-listener">${statusText}</span>
+          <span class="agent-icon">&#x1F916;</span>
+          <span class="dialogue-listener">${reviewerId ? esc(reviewerId) : statusText}</span>
+          ${isPaired ? `<span class="dialogue-evaluating">${statusText}</span>` : ''}
         </div>
         <div class="dialogue-comparison">
+          ${wPreview ? `<div class="dialogue-w">
+            <div class="dialogue-label">w (sampled)</div>
+            <div class="dialogue-w-preview">${esc(wPreview) || '(empty)'}${wPreview.length >= 100 ? '...' : ''}</div>
+          </div>
+          <div class="dialogue-vs">vs</div>` : ''}
           <div class="dialogue-w clickable" data-proposal-id="${esc(pid)}">
             <div class="dialogue-label">w' (proposed)</div>
             <div class="dialogue-w-preview">${esc(preview)}${preview.length >= 150 ? '...' : ''}</div>
