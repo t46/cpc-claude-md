@@ -57,6 +57,9 @@ def create_agent(args: argparse.Namespace, config: AgentConfig, work_dir: str) -
         return ClaudeCodeAgent(
             work_dir=work_dir,
             model=config.model_name,
+            agent_id=config.agent_id,
+            server_url=config.server_url,
+            task_id=config.task_id,
         )
 
     elif args.agent_type == "llm":

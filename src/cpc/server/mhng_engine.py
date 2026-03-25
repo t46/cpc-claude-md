@@ -31,6 +31,7 @@ class MHNGEngine:
     def __init__(self, sample_store: SampleStore, sb: SupabaseClient | None = None) -> None:
         self._store = sample_store
         self._sb = sb
+        self._activities: list[dict] = []  # In-memory activity log
 
     # --- Task management ---
 
@@ -316,6 +317,24 @@ class MHNGEngine:
             }).eq("task_id", task_id).eq("round_index", round_index).execute()
 
         return samples
+
+    # --- Activity log ---
+
+    def add_activity(self, agent_id: str, task_id: str, activity_type: str, detail: str) -> None:
+        entry = {
+            "agent_id": agent_id,
+            "task_id": task_id,
+            "activity_type": activity_type,
+            "detail": detail,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        self._activities.append(entry)
+        # Keep last 200 entries
+        if len(self._activities) > 200:
+            self._activities = self._activities[-200:]
+
+    def get_activity(self, task_id: str) -> list[dict]:
+        return [a for a in self._activities if a["task_id"] == task_id]
 
     # --- Query helpers for frontend ---
 

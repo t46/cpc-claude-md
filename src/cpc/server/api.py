@@ -237,6 +237,25 @@ def get_reviews(task_id: str) -> list[dict[str, Any]]:
     return get_engine().get_reviews(task_id)
 
 
+class AgentActivityRequest(BaseModel):
+    agent_id: str
+    task_id: str
+    activity_type: str  # "tool_use", "status", "review_start", "review_score"
+    detail: str = ""
+
+
+@router.post("/activity")
+def post_activity(req: AgentActivityRequest) -> dict[str, Any]:
+    engine = get_engine()
+    engine.add_activity(req.agent_id, req.task_id, req.activity_type, req.detail)
+    return {"status": "ok"}
+
+
+@router.get("/activity/{task_id}")
+def get_activity(task_id: str) -> list[dict[str, Any]]:
+    return get_engine().get_activity(task_id)
+
+
 @router.get("/diagnostics/{task_id}")
 def get_diagnostics(task_id: str) -> dict[str, Any]:
     return get_engine().get_diagnostics(task_id)

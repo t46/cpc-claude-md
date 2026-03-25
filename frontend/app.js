@@ -147,6 +147,11 @@ async function fetchFromAPI() {
       const reviewsResp = await fetch(`${base}/reviews/${taskId}`);
       state.reviews = await reviewsResp.json();
     } catch { state.reviews = []; }
+
+    try {
+      const activityResp = await fetch(`${base}/activity/${taskId}`);
+      state.agentActivity = await activityResp.json();
+    } catch { state.agentActivity = []; }
   }
 }
 
@@ -234,9 +239,29 @@ function renderActivityFeed() {
     });
   }
 
-  // Sort by time descending, take latest 20
+  // Add live agent activity (tool_use, status events)
+  const activities = state.agentActivity || [];
+  for (const a of activities) {
+    const time = a.timestamp ? timeAgo(a.timestamp) : "";
+    const isToolUse = a.activity_type === "tool_use";
+    const isStatus = a.activity_type === "status";
+    const isScore = a.activity_type === "review_score";
+    const icon = isToolUse ? "&#x1F527;" : isScore ? "&#x1F50D;" : "&#x26A1;";
+    const cls = isToolUse ? "event-tool" : isScore ? "event-score" : "event-status";
+    events.push({
+      time: a.timestamp || "",
+      html: `<div class="event ${cls} ${isNew(a.timestamp) ? 'event-new' : ''}">
+        <span class="event-icon">${icon}</span>
+        <span class="event-agent">${esc(a.agent_id)}</span>
+        <span class="event-detail">${esc(a.detail)}</span>
+        <span class="event-time">${time}</span>
+      </div>`
+    });
+  }
+
+  // Sort by time descending, take latest 30
   events.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
-  const latest = events.slice(0, 20);
+  const latest = events.slice(0, 30);
 
   feed.innerHTML = latest.map(e => e.html).join("") || '<div class="empty">Waiting for agent activity...</div>';
   $("#activity-count").textContent = events.length;

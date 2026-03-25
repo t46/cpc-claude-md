@@ -1,15 +1,7 @@
 """Claude Code agent: uses `claude` CLI as a fully autonomous CPC agent.
 
-Instead of controlling each CPC step (interpret, experiment, update, write),
-this agent delegates the entire propose/review process to a Claude Code
-instance running as a subprocess. Claude Code autonomously decides what
-tools to use, what files to read, what commands to run, etc.
-
-This is the most natural mapping to CPC-MS:
-  - z^k is Claude Code's entire reasoning trace (invisible to us)
-  - o^k is whatever Claude Code observes through its tools
-  - a^k is whatever actions Claude Code chooses
-  - We only see the final output: w' (proposal) and score
+Uses --output-format stream-json to capture tool usage events
+and sends them to the CPC server for live activity display.
 
 Usage:
   agent = ClaudeCodeAgent(work_dir="/path/to/task/data")
@@ -18,7 +10,10 @@ Usage:
 from __future__ import annotations
 
 import asyncio
+import json
 from pathlib import Path
+
+import httpx
 
 from cpc.agent.base import CPCAgent, ProposalOutput, ReviewScore
 
@@ -26,9 +21,7 @@ from cpc.agent.base import CPCAgent, ProposalOutput, ReviewScore
 class ClaudeCodeAgent(CPCAgent):
     """CPC agent that delegates to `claude` CLI (Claude Code).
 
-    Each propose/score call spawns a `claude` subprocess with a
-    carefully crafted prompt. Claude Code runs autonomously in the
-    given work_dir, using whatever tools it needs.
+    Streams tool_use events to the server for live frontend display.
     """
 
     def __init__(
@@ -37,33 +30,122 @@ class ClaudeCodeAgent(CPCAgent):
         model: str = "claude-sonnet-4-20250514",
         max_turns: int = 20,
         timeout: int = 600,
+        agent_id: str = "",
+        server_url: str = "",
+        task_id: str = "",
     ) -> None:
         self._work_dir = Path(work_dir)
         self._model = model
         self._max_turns = max_turns
         self._timeout = timeout
+        self._agent_id = agent_id
+        self._server_url = server_url
+        self._task_id = task_id
 
-    async def _run_claude(self, prompt: str) -> str:
-        """Run `claude` CLI locally with a prompt and return its output."""
+    def _send_activity(self, activity_type: str, detail: str) -> None:
+        """Send activity event to server (fire-and-forget)."""
+        if not self._server_url:
+            return
+        try:
+            httpx.post(
+                f"{self._server_url}/activity",
+                json={
+                    "agent_id": self._agent_id,
+                    "task_id": self._task_id,
+                    "activity_type": activity_type,
+                    "detail": detail,
+                },
+                timeout=5,
+            )
+        except Exception:
+            pass  # Non-critical, don't block agent
+
+    async def _run_claude(self, prompt: str, phase: str = "") -> str:
+        """Run `claude` CLI with stream-json, capture tool_use events."""
+        if phase:
+            self._send_activity("status", phase)
+
         proc = await asyncio.create_subprocess_exec(
             "claude",
             "--print",
             "--model", self._model,
             "--max-turns", str(self._max_turns),
-            "--output-format", "text",
+            "--output-format", "stream-json",
+            "--verbose",
             "-p", prompt,
             cwd=str(self._work_dir),
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await asyncio.wait_for(
-            proc.communicate(), timeout=self._timeout
-        )
-        output = stdout.decode("utf-8", errors="replace") if stdout else ""
-        if proc.returncode != 0:
-            err = stderr.decode("utf-8", errors="replace") if stderr else ""
-            output += f"\n[claude exit code: {proc.returncode}]\n{err}"
-        return output
+
+        result_text = ""
+        stdout_data = b""
+
+        try:
+            stdout_bytes, stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=self._timeout
+            )
+            stdout_data = stdout_bytes or b""
+        except asyncio.TimeoutError:
+            proc.kill()
+            return f"[timeout after {self._timeout}s]"
+
+        # Parse stream-json lines
+        for line in stdout_data.decode("utf-8", errors="replace").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+            event_type = event.get("type", "")
+
+            # Capture tool_use events
+            if event_type == "assistant":
+                msg = event.get("message", {})
+                content = msg.get("content", [])
+                for block in content:
+                    if block.get("type") == "tool_use":
+                        tool_name = block.get("name", "?")
+                        tool_input = block.get("input", {})
+                        # Build a human-readable summary
+                        detail = self._summarize_tool_use(tool_name, tool_input)
+                        self._send_activity("tool_use", detail)
+
+            # Capture final result
+            if event_type == "result":
+                result_text = event.get("result", "")
+
+        if proc.returncode != 0 and not result_text:
+            result_text = stdout_data.decode("utf-8", errors="replace")
+
+        return result_text
+
+    @staticmethod
+    def _summarize_tool_use(tool_name: str, tool_input: dict) -> str:
+        """Create a human-readable summary of a tool use."""
+        if tool_name == "Read":
+            path = tool_input.get("file_path", "?")
+            return f"Read {path.split('/')[-1]}"
+        elif tool_name == "Edit":
+            path = tool_input.get("file_path", "?")
+            return f"Edit {path.split('/')[-1]}"
+        elif tool_name == "Write":
+            path = tool_input.get("file_path", "?")
+            return f"Write {path.split('/')[-1]}"
+        elif tool_name == "Bash":
+            cmd = tool_input.get("command", "?")
+            return f"Bash: {cmd[:80]}"
+        elif tool_name == "Grep":
+            pattern = tool_input.get("pattern", "?")
+            return f"Grep: {pattern[:60]}"
+        elif tool_name == "Glob":
+            pattern = tool_input.get("pattern", "?")
+            return f"Glob: {pattern[:60]}"
+        else:
+            return f"{tool_name}"
 
     async def propose(self, w_current: str, task_description: str) -> ProposalOutput:
         prompt = f"""You are participating in a collaborative research process.
@@ -94,7 +176,8 @@ You MUST end your response with EXACTLY this structure (including the markers):
 (Summary of key observations from your investigation.)
 ===END_OBSERVATION_SUMMARY===
 """
-        output = await self._run_claude(prompt)
+        output = await self._run_claude(prompt, phase="proposing")
+        self._send_activity("status", "proposed")
         return self._parse_proposal(output)
 
     async def score(self, w: str, task_description: str) -> ReviewScore:
@@ -118,8 +201,10 @@ You MUST end your response with EXACTLY:
 (Brief explanation of your score)
 ===SCORE_REASONING_END===
 """
-        output = await self._run_claude(prompt)
-        return self._parse_score(output)
+        output = await self._run_claude(prompt, phase="scoring")
+        result = self._parse_score(output)
+        self._send_activity("review_score", f"score={result.score:.0f}")
+        return result
 
     @staticmethod
     def _parse_proposal(output: str) -> ProposalOutput:
@@ -135,7 +220,6 @@ You MUST end your response with EXACTLY:
         reasoning = _extract(output, "===REASONING===", "===END_REASONING===")
         observations = _extract(output, "===OBSERVATION_SUMMARY===", "===END_OBSERVATION_SUMMARY===")
 
-        # Fallback: if markers not found, use entire output as proposal
         if not proposed_w:
             proposed_w = output
 
@@ -153,7 +237,7 @@ You MUST end your response with EXACTLY:
             score_str = output[start:end].strip()
             score = float(score_str)
         except (ValueError, IndexError):
-            score = 50.0  # Neutral on parse failure
+            score = 50.0
 
         try:
             start = output.index("===SCORE_REASONING===") + len("===SCORE_REASONING===")
