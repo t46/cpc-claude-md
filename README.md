@@ -5,13 +5,14 @@ Collective Predictive Coding (CPC) の分散ベイズ推論プラットフォー
 ## 仕組み
 
 ```
-各エージェント(各自のPC)        Central Server
+各エージェント(各自のPC)        Central Server          Frontend Dashboard
 ┌─────────────┐
 │ 1. w を取得   │◄──────────── w^{[i-1]} を配布
-│ 2. 調査・実験  │              (フリーズ済み)
-│ 3. 提案 w' 生成│─────────────► 提案を収集
-│ 4. 査読       │◄────────────► ペアリング + 受理判定
-└─────────────┘              サンプル蓄積 → 次ラウンドへ
+│ 2. 調査・実験  │              (フリーズ済み)           ┌─────────────────┐
+│ 3. 提案 w' 生成│─────────────► 提案を収集 ──────────►│ Live Activity    │
+│ 4. 査読       │◄────────────► ペアリング + 受理判定 ──►│ MHNG Chain       │
+└─────────────┘              サンプル蓄積 ──────────►│ Samples / w_curr │
+                                                    └─────────────────┘
 ```
 
 各ラウンドで K 体のエージェントが並列に提案を生成し、ランダムにペアを組んで査読。受理された提案が w のサンプルとして蓄積され、サンプル集合が事後分布 q(w | o^1, ..., o^K) を近似する。
@@ -49,7 +50,33 @@ curl -X POST http://SERVER_HOST:8111/tasks \
   }'
 ```
 
-### 3. エージェントとして参加する
+#### Supabase を使う場合（永続化 + フロントエンド直接接続）
+
+1. [Supabase](https://supabase.com) でプロジェクトを作成
+2. SQL Editor で `supabase/migrations/20250325000000_init.sql` を実行
+3. `.env` に設定:
+```bash
+CPC_SERVER_SUPABASE_URL=https://xxx.supabase.co
+CPC_SERVER_SUPABASE_KEY=eyJ...
+```
+4. `frontend/app.js` の `SUPABASE_URL` と `SUPABASE_ANON_KEY` も設定
+
+Supabase なしでもインメモリモードで動作します。
+
+### 3. フロントエンドを開く
+
+```bash
+python3 -m http.server 8080 -d frontend/
+```
+
+ブラウザで http://localhost:8080 を開くと、ダッシュボードが表示されます:
+
+- **Dashboard**: タスク概要、w_current、Live Activity Feed、Agents、MHNG Chain、Convergence
+- **Samples**: 蓄積された全 w サンプル一覧
+
+Activity Feed の各イベントをクリックすると、提案の全文 (w')、reasoning (z')、observations (o) の詳細がモーダルで表示されます。Samples ビューでは各サンプルをクリックして内容を確認できます。
+
+### 4. エージェントとして参加する
 
 各参加者は自分の PC で以下を実行する。
 
@@ -112,7 +139,7 @@ uv run python scripts/run_agent.py \
   --agent-module my_agent.py
 ```
 
-### 4. ラウンドを進行する
+### 5. ラウンドを進行する
 
 サーバー側でラウンドの開始・ペアリング・完了を制御する:
 
@@ -157,18 +184,18 @@ curl $SERVER/diagnostics/$TASK
 Phase 1: Pull      全員が同じ w^{[i-1]} を取得
 Phase 2: Propose   各エージェントが独立に調査 → 提案生成 (i.i.d.)
 Phase 3: Pair      サーバーがランダムにペアリング
-Phase 4: Review    査読者が α を計算（スコアリング近似 + logit 変換）
+Phase 4: Review    査読者が受理比 r を計算（スコアリング近似 + logit 変換）
 Phase 5: Update    受理サンプルを蓄積、次ラウンドへ
 ```
 
-受理確率 α の計算:
+受理比 r の計算:
 ```
 score_proposed = agent.score(w_proposed)   # 0-100
 score_current  = agent.score(w_current)    # 0-100
 logit(s) = log(s / (100 - s + ε))
-log_α = logit(score_proposed) - logit(score_current)
-α = min(1, exp(log_α))
-accept = (uniform(0,1) < α)
+log_r = logit(score_proposed) - logit(score_current)
+r = min(1, exp(log_r))
+accept = (uniform(0,1) < r)
 ```
 
 ## API リファレンス
@@ -185,6 +212,8 @@ accept = (uniform(0,1) < α)
 | GET | `/rounds/{task_id}/review-assignment/{agent_id}` | 査読タスク取得 |
 | POST | `/rounds/{task_id}/review` | 査読結果を送信 |
 | POST | `/rounds/{task_id}/complete` | ラウンド完了 |
+| GET | `/proposals/{task_id}` | 提案一覧 |
+| GET | `/reviews/{task_id}` | 査読結果一覧 |
 | GET | `/samples/{task_id}` | サンプル一覧 |
 | GET | `/samples/{task_id}/latest` | 最新の受理サンプル |
 | GET | `/diagnostics/{task_id}` | 収束診断 |
@@ -192,25 +221,40 @@ accept = (uniform(0,1) < α)
 ## プロジェクト構成
 
 ```
-src/cpc/
-├── models.py                # データモデル（Sample, Proposal, Round 等）
-├── config.py                # 設定（pydantic-settings）
-├── server/
-│   ├── app.py               # FastAPI サーバー
-│   ├── api.py               # REST API エンドポイント
-│   ├── mhng_engine.py       # MHNG ラウンド管理（数理的核心）
-│   └── sample_store.py      # サンプル蓄積・永続化
-├── agent/
-│   ├── base.py              # CPCAgent 抽象基底クラス（propose + score）
-│   ├── llm_agent.py         # LLM API + Sandbox 実装
-│   ├── claude_code_agent.py # Claude Code CLI 実装
-│   ├── claude_api.py        # Anthropic API ラッパー
-│   ├── proposer.py          # Phase 2 の実行
-│   └── reviewer.py          # Phase 4 の実行（α 計算）
-└── sandbox/
-    ├── base.py              # Sandbox 抽象インターフェース
-    ├── docker_sandbox.py    # Docker 隔離（分散実行用）
-    └── worktree_sandbox.py  # git worktree 隔離（ローカルデモ用）
+cpc-claude-md/
+├── frontend/
+│   ├── index.html             # ダッシュボード（Dashboard / Samples ビュー）
+│   ├── app.js                 # Supabase / FastAPI 両対応のクライアント
+│   └── style.css              # ダークテーマ
+├── supabase/
+│   └── migrations/            # Supabase DB スキーマ
+├── src/cpc/
+│   ├── models.py              # データモデル（Sample, Proposal, Round 等）
+│   ├── config.py              # 設定（pydantic-settings）
+│   ├── server/
+│   │   ├── app.py             # FastAPI サーバー（Supabase / インメモリ両対応）
+│   │   ├── api.py             # REST API エンドポイント
+│   │   ├── mhng_engine.py     # MHNG ラウンド管理（数理的核心）
+│   │   └── sample_store.py    # サンプル蓄積・永続化
+│   ├── agent/
+│   │   ├── base.py            # CPCAgent 抽象基底クラス（propose + score）
+│   │   ├── llm_agent.py       # LLM API + Sandbox 実装
+│   │   ├── claude_code_agent.py # Claude Code CLI 実装
+│   │   ├── claude_api.py      # Anthropic API ラッパー
+│   │   ├── proposer.py        # Phase 2 の実行
+│   │   └── reviewer.py        # Phase 4 の実行（r 計算）
+│   └── sandbox/
+│       ├── base.py            # Sandbox 抽象インターフェース
+│       ├── docker_sandbox.py  # Docker 隔離（分散実行用）
+│       └── worktree_sandbox.py # git worktree 隔離（ローカルデモ用）
+├── examples/
+│   └── my_agent.py            # カスタムエージェントの実装例
+├── scripts/
+│   ├── run_server.py          # サーバー起動
+│   ├── run_agent.py           # エージェント起動
+│   └── demo.py               # E2E デモ
+└── tasks/
+    └── example.yaml           # タスク定義の例
 ```
 
 ## 自分のエージェントを実装する
