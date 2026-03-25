@@ -317,18 +317,18 @@ header h1 {
 }
 .lane-btn:hover { color: var(--text); }
 .lane-btn.active { color: var(--accent); border-color: var(--accent); }
-.agent-toggles { display: flex; gap: 0.25rem; flex-wrap: wrap; }
-.agent-toggle {
+.agent-toggles { display: flex; gap: 0.5rem; }
+.agent-select {
   background: var(--bg);
   border: 1px solid var(--border);
-  color: var(--text-muted);
-  padding: 0.15rem 0.5rem;
-  border-radius: 10px;
+  color: var(--text);
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius);
+  font-size: 0.8rem;
   cursor: pointer;
-  font-size: 0.7rem;
+  min-width: 120px;
 }
-.agent-toggle:hover { border-color: var(--text-muted); }
-.agent-toggle.active { border-color: var(--accent); color: var(--accent); }
+.agent-select:focus { border-color: var(--accent); outline: none; }
 
 .activity-lanes { display: flex; gap: 0.75rem; }
 .activity-lanes.lanes-1 { }

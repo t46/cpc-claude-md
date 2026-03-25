@@ -247,23 +247,25 @@ function renderActivityFeed() {
   events.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
   $("#activity-count").textContent = events.length;
 
-  // Get unique agents
-  const agentIds = [...new Set(events.map(e => e.agent_id).filter(Boolean))];
+  // Get unique agents from all sources
+  const allAgentIds = [...new Set([
+    ...events.map(e => e.agent_id),
+    ...(state.agents || []).map(a => a.id || a.agent_id),
+  ].filter(Boolean))];
 
-  // Render agent toggle buttons
+  // Render agent selector dropdowns
   const toggles = $("#agent-toggles");
-  toggles.innerHTML = agentIds.map(id =>
-    `<button class="agent-toggle ${(state.laneAgents[0] === id || state.laneAgents[1] === id) ? 'active' : ''}" data-agent="${esc(id)}">${esc(id)}</button>`
-  ).join("");
-  toggles.querySelectorAll(".agent-toggle").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const agentId = btn.dataset.agent;
-      // Find first empty lane or toggle off
-      if (state.laneAgents[0] === agentId) { state.laneAgents[0] = null; }
-      else if (state.laneAgents[1] === agentId) { state.laneAgents[1] = null; }
-      else if (state.laneAgents[0] === null) { state.laneAgents[0] = agentId; }
-      else if (state.laneCount === 2 && state.laneAgents[1] === null) { state.laneAgents[1] = agentId; }
-      else { state.laneAgents[0] = agentId; }
+  const makeSelect = (laneIdx) => {
+    const selected = state.laneAgents[laneIdx];
+    const options = `<option value="">All agents</option>` +
+      allAgentIds.map(id => `<option value="${esc(id)}" ${selected === id ? 'selected' : ''}>${esc(id)}</option>`).join("");
+    return `<select class="agent-select" data-lane="${laneIdx}">${options}</select>`;
+  };
+  toggles.innerHTML = makeSelect(0) + (state.laneCount === 2 ? makeSelect(1) : "");
+  toggles.querySelectorAll(".agent-select").forEach(sel => {
+    sel.addEventListener("change", () => {
+      const lane = parseInt(sel.dataset.lane);
+      state.laneAgents[lane] = sel.value || null;
       renderActivityFeed();
     });
   });
