@@ -1,0 +1,22 @@
+task_id: codebase-bug-analysis
+description: |
+  Analyze the given codebase to identify potential bugs, performance issues,
+  and design problems. Each agent should independently investigate different
+  aspects and propose findings based on their observations.
+
+  Agents should:
+  1. Read source code files
+  2. Run static analysis or tests
+  3. Form hypotheses about issues
+  4. Propose findings with evidence
+
+initial_w: ""
+docker_image: python:3.12-slim
+max_rounds: 20
+convergence_threshold: 0.05
+
+agent_specializations:
+  - "backend performance analysis specialist"
+  - "network and infrastructure analysis specialist"
+  - "data analysis and statistics specialist"
+  - "security and log analysis specialist"
