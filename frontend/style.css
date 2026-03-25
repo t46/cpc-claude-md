@@ -315,6 +315,13 @@ header h1 {
   height: 60px;
   border-bottom: 1px solid var(--border);
 }
+.convergence-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 60px;
+  border-bottom: 1px solid var(--border);
+}
 .conv-bar-wrap {
   display: flex;
   flex-direction: column;
