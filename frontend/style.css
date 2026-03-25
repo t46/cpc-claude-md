@@ -249,6 +249,52 @@ header h1 {
 }
 
 /* ===== Live Activity Feed ===== */
+.activity-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+.activity-header h2 { margin-bottom: 0; }
+.lane-controls { display: flex; gap: 0.25rem; }
+.lane-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.75rem;
+}
+.lane-btn:hover { color: var(--text); }
+.lane-btn.active { color: var(--accent); border-color: var(--accent); }
+.agent-toggles { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+.agent-toggle {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.15rem 0.5rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 0.7rem;
+}
+.agent-toggle:hover { border-color: var(--text-muted); }
+.agent-toggle.active { border-color: var(--accent); color: var(--accent); }
+
+.activity-lanes { display: flex; gap: 0.75rem; }
+.activity-lanes.lanes-1 { }
+.activity-lanes.lanes-2 .activity-lane { flex: 1; }
+.activity-lane { flex: 1; min-width: 0; }
+.lane-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  background: var(--bg);
+  border-radius: var(--radius);
+}
 .activity-feed {
   max-height: 280px;
   overflow-y: auto;

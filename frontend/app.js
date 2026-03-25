@@ -22,6 +22,8 @@ let state = {
   selectedTaskId: null,
   prevProposalCount: 0,
   prevReviewCount: 0,
+  laneCount: 1,
+  laneAgents: [null, null],  // agent_id assigned to each lane, null = all
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -56,6 +58,21 @@ document.addEventListener("DOMContentLoaded", () => {
       btn.classList.add("active");
       $$(".view").forEach(v => v.hidden = true);
       $(`#view-${view}`).hidden = false;
+    });
+  });
+
+  // Lane controls
+  $$(".lane-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const lanes = parseInt(btn.dataset.lanes);
+      state.laneCount = lanes;
+      $$(".lane-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      const container = $("#activity-lanes");
+      container.className = `activity-lanes lanes-${lanes}`;
+      const lane1 = container.querySelector("[data-lane='1']");
+      lane1.hidden = (lanes === 1);
+      renderActivityFeed();
     });
   });
 
@@ -213,80 +230,78 @@ function renderWCurrent() {
 }
 
 function renderActivityFeed() {
-  const feed = $("#activity-feed");
   const taskId = state.selectedTaskId;
-  const events = [];
 
-  // Build events from proposals and reviews
+  // Build all events with agent_id
+  const events = [];
   const proposals = state.proposals.filter(p => p.task_id === taskId || !sb);
   const reviews = state.reviews.filter(r => r.task_id === taskId || !sb);
 
   for (const p of proposals) {
-    const time = p.created_at ? timeAgo(p.created_at) : "";
+    const time = p.created_at || "";
     const obs = p.observation_summary ? p.observation_summary.slice(0, 120) : "";
     const pid = p.id || p.proposal_id || "";
-    events.push({
-      time: p.created_at || "",
-      html: `<div class="event event-propose clickable ${isNew(p.created_at) ? 'event-new' : ''}" data-proposal-id="${esc(pid)}">
-        <span class="event-icon">&#x1F7E2;</span>
-        <span class="event-agent">${esc(p.agent_id)}</span> proposed
-        ${obs ? `<span class="event-obs">"${esc(obs)}${obs.length >= 120 ? '...' : ''}"</span>` : ''}
-        <span class="event-time">${time}</span>
-      </div>`
-    });
+    events.push({ agent_id: p.agent_id, time, html: `<div class="event event-propose clickable ${isNew(time) ? 'event-new' : ''}" data-proposal-id="${esc(pid)}"><span class="event-icon">&#x1F7E2;</span><span class="event-agent">${esc(p.agent_id)}</span> proposed${obs ? ` <span class="event-obs">"${esc(obs)}${obs.length >= 120 ? '...' : ''}"</span>` : ''}<span class="event-time">${timeAgo(time)}</span></div>` });
   }
-
   for (const r of reviews) {
-    const time = r.created_at ? timeAgo(r.created_at) : "";
+    const time = r.created_at || "";
     const icon = r.accepted ? "&#x2705;" : "&#x274C;";
     const cls = r.accepted ? "event-accept" : "event-reject";
     const alpha = typeof r.log_alpha === "number" ? `r=${Math.min(1, Math.exp(Math.min(r.log_alpha, 5))).toFixed(2)}` : "";
-    events.push({
-      time: r.created_at || "",
-      html: `<div class="event ${cls} ${isNew(r.created_at) ? 'event-new' : ''}">
-        <span class="event-icon">${icon}</span>
-        <span class="event-agent">${esc(r.reviewer_id)}</span>
-        ${r.accepted ? "ACCEPTED" : "rejected"}
-        <span class="event-scores">(${r.score_proposed?.toFixed(0) || '?'}/${r.score_current?.toFixed(0) || '?'}) ${alpha}</span>
-        <span class="event-time">${time}</span>
-      </div>`
-    });
+    events.push({ agent_id: r.reviewer_id, time, html: `<div class="event ${cls} ${isNew(time) ? 'event-new' : ''}"><span class="event-icon">${icon}</span><span class="event-agent">${esc(r.reviewer_id)}</span> ${r.accepted ? "ACCEPTED" : "rejected"}<span class="event-scores">(${r.score_proposed?.toFixed(0) || '?'}/${r.score_current?.toFixed(0) || '?'}) ${alpha}</span><span class="event-time">${timeAgo(time)}</span></div>` });
   }
-
-  // Add live agent activity (tool_use, status events)
-  const activities = state.agentActivity || [];
-  for (const a of activities) {
-    const time = a.timestamp || a.created_at ? timeAgo(a.timestamp || a.created_at) : "";
+  for (const a of (state.agentActivity || [])) {
+    const time = a.timestamp || a.created_at || "";
     const isToolUse = a.activity_type === "tool_use";
-    const isStatus = a.activity_type === "status";
     const isScore = a.activity_type === "review_score";
     const icon = isToolUse ? "&#x1F527;" : isScore ? "&#x1F50D;" : "&#x26A1;";
     const cls = isToolUse ? "event-tool" : isScore ? "event-score" : "event-status";
-    events.push({
-      time: a.timestamp || a.created_at || "",
-      html: `<div class="event ${cls} ${isNew(a.timestamp || a.created_at) ? 'event-new' : ''}">
-        <span class="event-icon">${icon}</span>
-        <span class="event-agent">${esc(a.agent_id)}</span>
-        <span class="event-detail">${esc(a.detail)}</span>
-        <span class="event-time">${time}</span>
-      </div>`
-    });
+    events.push({ agent_id: a.agent_id, time, html: `<div class="event ${cls} ${isNew(time) ? 'event-new' : ''}"><span class="event-icon">${icon}</span><span class="event-agent">${esc(a.agent_id)}</span> <span class="event-detail">${esc(a.detail)}</span><span class="event-time">${timeAgo(time)}</span></div>` });
   }
 
-  // Sort by time descending, take latest 30
   events.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
-  const latest = events.slice(0, 30);
-
-  feed.innerHTML = latest.map(e => e.html).join("") || '<div class="empty">Waiting for agent activity...</div>';
   $("#activity-count").textContent = events.length;
 
-  // Click handler for proposal details
-  feed.querySelectorAll("[data-proposal-id]").forEach(el => {
-    el.addEventListener("click", () => showProposalModal(el.dataset.proposalId));
+  // Get unique agents
+  const agentIds = [...new Set(events.map(e => e.agent_id).filter(Boolean))];
+
+  // Render agent toggle buttons
+  const toggles = $("#agent-toggles");
+  toggles.innerHTML = agentIds.map(id =>
+    `<button class="agent-toggle ${(state.laneAgents[0] === id || state.laneAgents[1] === id) ? 'active' : ''}" data-agent="${esc(id)}">${esc(id)}</button>`
+  ).join("");
+  toggles.querySelectorAll(".agent-toggle").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const agentId = btn.dataset.agent;
+      // Find first empty lane or toggle off
+      if (state.laneAgents[0] === agentId) { state.laneAgents[0] = null; }
+      else if (state.laneAgents[1] === agentId) { state.laneAgents[1] = null; }
+      else if (state.laneAgents[0] === null) { state.laneAgents[0] = agentId; }
+      else if (state.laneCount === 2 && state.laneAgents[1] === null) { state.laneAgents[1] = agentId; }
+      else { state.laneAgents[0] = agentId; }
+      renderActivityFeed();
+    });
   });
 
-  state.prevProposalCount = proposals.length;
-  state.prevReviewCount = reviews.length;
+  // Render lanes
+  for (let lane = 0; lane < state.laneCount; lane++) {
+    const feed = $(`#activity-feed-${lane}`);
+    const label = $(`#lane-label-${lane}`);
+    if (!feed) continue;
+
+    const filteredAgent = state.laneAgents[lane];
+    const filtered = filteredAgent
+      ? events.filter(e => e.agent_id === filteredAgent)
+      : events;
+    const latest = filtered.slice(0, 30);
+
+    label.textContent = filteredAgent || "All agents";
+    feed.innerHTML = latest.map(e => e.html).join("") || '<div class="empty">Waiting for activity...</div>';
+
+    feed.querySelectorAll("[data-proposal-id]").forEach(el => {
+      el.addEventListener("click", () => showProposalModal(el.dataset.proposalId));
+    });
+  }
 }
 
 function showProposalModal(proposalId) {
