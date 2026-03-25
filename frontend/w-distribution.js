@@ -140,7 +140,7 @@ function drawDensity(canvas, densities, options = {}) {
     return;
   }
 
-  const maxY = Math.max(...densities.y) || 1;
+  const maxY = options.globalMaxY || Math.max(...densities.y) || 1;
   const pad = { top: 10, bottom: 25, left: 10, right: 10 };
   const plotW = W - pad.left - pad.right;
   const plotH = H - pad.top - pad.bottom;
@@ -195,36 +195,84 @@ function drawDensity(canvas, densities, options = {}) {
   ctx.fillText("← w space (1D projection) →", W / 2, H - 3);
 }
 
-// Main: render distribution for a specific round
+// Main: render distribution for a specific round, using global axis from all samples
 async function renderWDistribution(samples, roundIndex, canvas) {
-  // Filter samples for this specific round only
-  const roundSamples = samples.filter(s => s.round_index === roundIndex);
-  if (roundSamples.length === 0) {
+  if (samples.length < 2) {
     drawDensity(canvas, null);
     return;
   }
 
-  const texts = roundSamples.map(s => s.content || "");
-  const embeddings = await getEmbeddings(texts);
+  // Embed ALL samples to get a shared PCA projection and axis
+  const allTexts = samples.map(s => s.content || "");
+  const allEmbeddings = await getEmbeddings(allTexts);
 
-  // Filter out nulls
-  const validEmbeddings = [];
-  const validTexts = [];
-  for (let i = 0; i < embeddings.length; i++) {
-    if (embeddings[i]) {
-      validEmbeddings.push(embeddings[i]);
-      validTexts.push(texts[i]);
+  const validAll = [];
+  const validRoundIndices = [];
+  for (let i = 0; i < allEmbeddings.length; i++) {
+    if (allEmbeddings[i]) {
+      validAll.push(allEmbeddings[i]);
+      validRoundIndices.push(samples[i].round_index ?? 0);
     }
   }
 
-  if (validEmbeddings.length < 2) {
-    drawDensity(canvas, validEmbeddings.length === 0 ? false : null);
+  if (validAll.length < 2) {
+    drawDensity(canvas, validAll.length === 0 ? false : null);
     return;
   }
 
-  const projections = projectTo1D(validEmbeddings);
-  const densities = kde(projections);
-  drawDensity(canvas, densities, { projections });
+  // Project ALL to 1D with shared PCA
+  const allProjections = projectTo1D(validAll);
+
+  // Global axis range (shared across all rounds)
+  const globalMin = Math.min(...allProjections);
+  const globalMax = Math.max(...allProjections);
+
+  // Filter to selected round's projections
+  const roundProjections = [];
+  for (let i = 0; i < allProjections.length; i++) {
+    if (validRoundIndices[i] === roundIndex) {
+      roundProjections.push(allProjections[i]);
+    }
+  }
+
+  if (roundProjections.length === 0) {
+    drawDensity(canvas, null);
+    return;
+  }
+
+  // KDE with fixed global axis
+  const densities = kdeFixed(roundProjections, globalMin, globalMax);
+
+  // Also compute global KDE for max-y reference (so y-axis is also comparable)
+  const globalDensities = kdeFixed(allProjections, globalMin, globalMax);
+  const globalMaxY = Math.max(...globalDensities.y);
+
+  drawDensity(canvas, densities, { projections: roundProjections, globalMaxY });
+}
+
+// KDE with fixed x-axis range
+function kdeFixed(values, xMin, xMax, numPoints = 100) {
+  if (values.length === 0) return { x: [], y: [] };
+
+  const range = xMax - xMin || 1;
+  const margin = range * 0.15;
+  const h = range / Math.max(values.length, 1) * 1.5;
+
+  const x = [];
+  const y = [];
+  for (let i = 0; i < numPoints; i++) {
+    const xi = (xMin - margin) + (range + 2 * margin) * i / (numPoints - 1);
+    let density = 0;
+    for (const v of values) {
+      const u = (xi - v) / h;
+      density += Math.exp(-0.5 * u * u) / (h * Math.sqrt(2 * Math.PI));
+    }
+    density /= values.length;
+    x.push(xi);
+    y.push(density);
+  }
+
+  return { x, y };
 }
 
 // Export for app.js
