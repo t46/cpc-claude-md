@@ -21,7 +21,10 @@ import httpx
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="CPC Round Manager")
-    parser.add_argument("--server-url", default="http://localhost:8000")
+    parser.add_argument("--server-url", default="http://localhost:8000",
+                        help="FastAPI server URL (ignored if --supabase-url is set)")
+    parser.add_argument("--supabase-url", default="", help="Supabase project URL")
+    parser.add_argument("--supabase-key", default="", help="Supabase anon key")
     parser.add_argument("--task-id", required=True)
     parser.add_argument("action", choices=["start", "pair", "complete", "status", "auto"])
     parser.add_argument("--wait-for-agents", type=int, default=2,
@@ -30,13 +33,17 @@ def main() -> None:
                         help="Seconds between polls in auto mode")
     args = parser.parse_args()
 
-    client = httpx.Client(base_url=args.server_url, timeout=30)
-
-    try:
-        client.get("/health").raise_for_status()
-    except Exception:
-        print(f"Cannot connect to {args.server_url}")
-        sys.exit(1)
+    if args.supabase_url and args.supabase_key:
+        from cpc.supabase_client import SupabaseAPIClient
+        client = SupabaseAPIClient(args.supabase_url, args.supabase_key)
+        print(f"Using Supabase: {args.supabase_url}")
+    else:
+        client = httpx.Client(base_url=args.server_url, timeout=30)
+        try:
+            client.get("/health").raise_for_status()
+        except Exception:
+            print(f"Cannot connect to {args.server_url}")
+            sys.exit(1)
 
     if args.action == "start":
         do_start(client, args.task_id)

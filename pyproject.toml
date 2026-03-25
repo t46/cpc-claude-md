@@ -4,14 +4,24 @@ version = "0.1.0"
 description = "Collective Predictive Coding platform for distributed Bayesian inference with AI agents"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115",
-    "uvicorn>=0.34",
     "httpx>=0.28",
     "pydantic-settings>=2.7",
-    "anthropic>=0.52",
-    "docker>=7.1",
-    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+server = [
+    "fastapi>=0.115",
+    "uvicorn>=0.34",
     "supabase>=2.0",
+]
+agent-llm = [
+    "anthropic>=0.52",
+]
+docker = [
+    "docker>=7.1",
+]
+all = [
+    "cpc[server,agent-llm,docker]",
 ]
 
 [project.scripts]

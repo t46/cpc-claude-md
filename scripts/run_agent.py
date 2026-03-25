@@ -112,7 +112,10 @@ def create_agent(args: argparse.Namespace, config: AgentConfig, work_dir: str) -
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="CPC Agent Runner")
-    parser.add_argument("--server-url", default="http://localhost:8000")
+    parser.add_argument("--server-url", default="http://localhost:8000",
+                        help="FastAPI server URL (ignored if --supabase-url is set)")
+    parser.add_argument("--supabase-url", default="", help="Supabase project URL (no FastAPI needed)")
+    parser.add_argument("--supabase-key", default="", help="Supabase anon key")
     parser.add_argument("--task-id", required=True)
     parser.add_argument("--agent-id", default="")
     parser.add_argument("--specialization", default="")
@@ -139,14 +142,26 @@ def main() -> None:
         model_name=args.model,
     )
 
-    # Fetch task info from server to get data_dir
+    # Create HTTP client — Supabase direct or FastAPI
+    if args.supabase_url and args.supabase_key:
+        from cpc.supabase_client import SupabaseAPIClient
+        http_client = SupabaseAPIClient(args.supabase_url, args.supabase_key)
+        server_url_for_agent = args.supabase_url  # For activity streaming
+        logging.info(f"Using Supabase direct mode: {args.supabase_url}")
+    else:
+        http_client = None  # Runner will create its own httpx.Client
+        server_url_for_agent = config.server_url
+
+    # Fetch task info to get data_dir
     data_dir = ""
     try:
-        import httpx
-        resp = httpx.get(f"{config.server_url}/tasks/{config.task_id}", timeout=10)
-        if resp.status_code == 200:
-            task_info = resp.json()
-            data_dir = task_info.get("data_dir", "")
+        if http_client:
+            task_info = http_client.get(f"/tasks/{config.task_id}").json()
+        else:
+            import httpx
+            resp = httpx.get(f"{config.server_url}/tasks/{config.task_id}", timeout=10)
+            task_info = resp.json() if resp.status_code == 200 else {}
+        data_dir = task_info.get("data_dir", "")
     except Exception as e:
         logging.warning(f"Could not fetch task info: {e}")
 
@@ -155,7 +170,11 @@ def main() -> None:
     logging.info(f"Work directory: {work_dir}")
 
     agent = create_agent(args, config, work_dir)
+
+    # Inject Supabase client into runner if available
     runner = AgentRunner(config=config, agent=agent)
+    if http_client:
+        runner._http = http_client
 
     asyncio.run(runner.run_loop(max_rounds=args.max_rounds))
 
