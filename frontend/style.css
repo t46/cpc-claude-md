@@ -229,7 +229,7 @@ header h1 {
   align-items: center;
   gap: 0.5rem;
 }
-.panel-wide { grid-column: span 1; }
+.panel-wide { max-width: 1400px; margin: 0 auto 1rem; }
 .panel-full { max-width: 1400px; margin: 0 auto 1rem; }
 
 #panel-activity { max-width: 1400px; margin: 0 auto 1rem; }
