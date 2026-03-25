@@ -82,7 +82,7 @@
         <span id="stat-round" class="stat-value">0</span>
       </div>
       <div class="stat">
-        <span class="stat-label">Log-Compat.</span>
+        <span class="stat-label">-LC</span>
         <span id="stat-logcompat" class="stat-value">-</span>
       </div>
     </div>
@@ -92,7 +92,8 @@
         <div id="convergence-bars" class="convergence-bars"></div>
       </div>
       <div class="chart-section">
-        <h3 class="chart-title">Log-Compatibility <span class="chart-info" title="Σ logit(score_k(w)) — how well w explains agents' hypotheses. Higher = better fit. Related to but not identical to the ELBO.">?</span></h3>
+        <h3 class="chart-title">Negative Log-Compatibility <span class="chart-info" title="-LC = -Σ_k logit(score_k(w)), where logit(s) = ln(s/(100-s+ε)). Approximates a component of the variational free energy F. Decreases as MHNG converges — lower = w better explains agents' hypotheses z^k.">?</span></h3>
+        <div class="chart-formula">-LC = -Σ<sub>k</sub> logit(score<sub>k</sub>(w)), &ensp; logit(s) = ln(s / (100 - s + ε))</div>
         <div id="logcompat-chart" class="convergence-bars"></div>
       </div>
     </div>

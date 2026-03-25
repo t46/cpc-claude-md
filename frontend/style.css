@@ -307,6 +307,13 @@ header h1 {
   vertical-align: middle;
   margin-left: 0.25rem;
 }
+.chart-formula {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-family: "Times New Roman", serif;
+  font-style: italic;
+  margin-bottom: 0.5rem;
+}
 .convergence-bars {
   display: flex;
   align-items: flex-end;

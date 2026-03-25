@@ -392,27 +392,28 @@ function renderConvergence() {
     return;
   }
 
-  // Compute per-round average log-compatibility
-  const lcValues = lcRoundKeys.map(ri => {
+  // Compute per-round negative log-compatibility: -LC = -Σ_k logit(score_k(w))
+  // This approximates a component of the variational free energy F.
+  // Decreases as MHNG converges (lower = better).
+  const nlcValues = lcRoundKeys.map(ri => {
     const d = logCompatByRound[ri];
-    return d.count > 0 ? d.sum / d.count : 0;
+    return d.count > 0 ? -(d.sum / d.count) : 0;
   });
 
   // Show latest value in stat
-  const latestLC = lcValues[lcValues.length - 1];
-  $("#stat-logcompat").textContent = latestLC.toFixed(2);
+  const latestNLC = nlcValues[nlcValues.length - 1];
+  $("#stat-logcompat").textContent = latestNLC.toFixed(2);
 
-  // Normalize for bar display: shift so min is near 0
-  const lcMin = Math.min(...lcValues);
-  const lcMax = Math.max(...lcValues);
-  const lcRange = Math.max(lcMax - lcMin, 0.1);
+  // Normalize for bar display: higher bars = higher -LC (worse)
+  const nlcMin = Math.min(...nlcValues);
+  const nlcMax = Math.max(...nlcValues);
+  const nlcRange = Math.max(nlcMax - nlcMin, 0.1);
 
   lcChart.innerHTML = lcRoundKeys.map((ri, i) => {
-    const val = lcValues[i];
-    const pct = ((val - lcMin) / lcRange) * 100;
-    const color = val >= 0 ? "var(--green)" : "var(--accent)";
+    const val = nlcValues[i];
+    const pct = ((val - nlcMin) / nlcRange) * 100;
     return `<div class="conv-bar-wrap">
-      <div class="conv-bar" style="height:${Math.max(4, pct)}%;background:${color}" title="Round ${ri}: avg logit(score) = ${val.toFixed(3)}"></div>
+      <div class="conv-bar" style="height:${Math.max(4, pct)}%;background:var(--accent)" title="Round ${ri}: -LC = ${val.toFixed(3)}"></div>
       <div class="conv-bar-label">R${ri}</div>
     </div>`;
   }).join("");
