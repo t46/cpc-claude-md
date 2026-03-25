@@ -59,6 +59,18 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  // Join copy button
+  const copyBtn = $("#join-copy-btn");
+  if (copyBtn) {
+    copyBtn.addEventListener("click", () => {
+      const text = $("#join-instruction").textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.textContent = "Copied!";
+        setTimeout(() => { copyBtn.textContent = "Copy"; }, 2000);
+      });
+    });
+  }
+
   // Render KaTeX
   $$(".math-tex").forEach((el) => {
     katex.render(el.textContent, el, { throwOnError: false });
