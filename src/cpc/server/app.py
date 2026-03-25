@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from cpc.config import ServerConfig
 from cpc.server.api import router, set_engine
@@ -17,15 +18,29 @@ def create_app(config: ServerConfig | None = None) -> FastAPI:
 
     app = FastAPI(title="CPC Platform", version="0.1.0")
 
-    store = SampleStore(data_dir=config.data_dir)
-    engine = MHNGEngine(sample_store=store)
+    # CORS for frontend
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Initialize Supabase if configured
+    sb = None
+    if config.supabase_url and config.supabase_key:
+        from supabase import create_client
+        sb = create_client(config.supabase_url, config.supabase_key)
+
+    store = SampleStore(sb=sb)
+    engine = MHNGEngine(sample_store=store, sb=sb)
     set_engine(engine)
 
     app.include_router(router)
 
     @app.get("/health")
     def health() -> dict[str, str]:
-        return {"status": "ok"}
+        return {"status": "ok", "backend": "supabase" if sb else "memory"}
 
     return app
 

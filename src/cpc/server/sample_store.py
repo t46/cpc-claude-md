@@ -1,4 +1,4 @@
-"""Sample store for accumulating w samples.
+"""Sample store backed by Supabase.
 
 Maintains the Monte Carlo sample set {w^[1], ..., w^[I]} that
 approximates the posterior q(w | o^1, ..., o^K).
@@ -6,45 +6,51 @@ approximates the posterior q(w | o^1, ..., o^K).
 
 from __future__ import annotations
 
-import json
 from dataclasses import asdict
-from pathlib import Path
+from supabase import Client as SupabaseClient
 
 from cpc.models import Sample
 
 
 class SampleStore:
-    def __init__(self, data_dir: str = "data") -> None:
-        self._samples: list[Sample] = []
-        self._data_dir = Path(data_dir)
+    def __init__(self, sb: SupabaseClient | None = None) -> None:
+        self._sb = sb
+        # Fallback in-memory store when Supabase is not configured
+        self._memory: list[dict] = []
 
-    def add_sample(self, sample: Sample) -> None:
-        self._samples.append(sample)
-        self._flush()
+    def _to_dict(self, sample: Sample) -> dict:
+        d = asdict(sample)
+        d["created_at"] = d["created_at"].isoformat()
+        return d
 
-    def get_samples(self, task_id: str) -> list[Sample]:
-        return [s for s in self._samples if True]  # TODO: filter by task_id when stored
+    def add_sample(self, sample: Sample, task_id: str = "") -> None:
+        d = self._to_dict(sample)
+        d["task_id"] = task_id
+        if self._sb:
+            self._sb.table("samples").insert(d).execute()
+        else:
+            self._memory.append(d)
 
-    def get_accepted_samples(self, task_id: str) -> list[Sample]:
-        return [s for s in self._samples if s.accepted]
+    def get_samples(self, task_id: str) -> list[dict]:
+        if self._sb:
+            res = self._sb.table("samples").select("*").eq("task_id", task_id).order("created_at").execute()
+            return res.data or []
+        return [s for s in self._memory if s.get("task_id") == task_id]
 
-    def get_latest_accepted(self, task_id: str) -> Sample | None:
+    def get_accepted_samples(self, task_id: str) -> list[dict]:
+        if self._sb:
+            res = (self._sb.table("samples").select("*")
+                   .eq("task_id", task_id).eq("accepted", True)
+                   .order("created_at").execute())
+            return res.data or []
+        return [s for s in self._memory if s.get("task_id") == task_id and s.get("accepted")]
+
+    def get_latest_accepted(self, task_id: str) -> dict | None:
         accepted = self.get_accepted_samples(task_id)
         return accepted[-1] if accepted else None
 
-    @property
-    def sample_count(self) -> int:
-        return len(self._samples)
+    def get_sample_count(self, task_id: str) -> int:
+        return len(self.get_samples(task_id))
 
-    @property
-    def accepted_count(self) -> int:
-        return sum(1 for s in self._samples if s.accepted)
-
-    def _flush(self) -> None:
-        self._data_dir.mkdir(parents=True, exist_ok=True)
-        path = self._data_dir / "samples.jsonl"
-        with open(path, "w") as f:
-            for s in self._samples:
-                d = asdict(s)
-                d["created_at"] = d["created_at"].isoformat()
-                f.write(json.dumps(d, ensure_ascii=False) + "\n")
+    def get_accepted_count(self, task_id: str) -> int:
+        return len(self.get_accepted_samples(task_id))

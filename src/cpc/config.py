@@ -12,6 +12,8 @@ class ServerConfig(BaseSettings):
     round_timeout_seconds: int = 600
     min_agents_for_round: int = 2
     max_agents_per_round: int = 100
+    supabase_url: str = ""
+    supabase_key: str = ""
 
     model_config = {"env_prefix": "CPC_SERVER_", "env_file": ".env", "extra": "ignore"}
 

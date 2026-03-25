@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CPC Platform</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.css" />
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16/dist/katex.min.js"></script>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <h1>CPC Platform <span class="subtitle">Collective Predictive Coding</span></h1>
+      <div class="header-actions">
+        <div id="connection-status" class="status-dot"></div>
+        <button id="about-btn" class="header-btn">About</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Top: Task + w_current -->
+  <section class="top-row">
+    <div class="panel" id="panel-task">
+      <h2>Task <span class="math-tex">d</span></h2>
+      <div id="task-description" class="task-desc">No task loaded</div>
+      <div id="round-progress" class="round-progress"></div>
+    </div>
+    <div class="panel" id="panel-wcurrent">
+      <h2><span class="math-tex">w</span><sub>current</sub></h2>
+      <div id="wcurrent-content" class="markdown-body">No accepted samples yet</div>
+    </div>
+  </section>
+
+  <!-- Live Activity Feed -->
+  <section class="panel panel-wide" id="panel-activity">
+    <h2>Live Activity <span id="activity-count" class="count-badge">0</span></h2>
+    <div id="activity-feed" class="activity-feed"></div>
+  </section>
+
+  <!-- Bottom: Agents + MHNG Chain -->
+  <section class="bottom-row">
+    <div class="panel" id="panel-agents">
+      <h2>Agents <span id="agent-count" class="count-badge">0</span></h2>
+      <div id="agents-list" class="panel-body"></div>
+    </div>
+    <div class="panel panel-wide" id="panel-chain">
+      <h2>MHNG Chain</h2>
+      <div id="mhng-chain" class="chain-scroll"></div>
+    </div>
+  </section>
+
+  <!-- Convergence -->
+  <section class="panel panel-full" id="panel-convergence">
+    <h2>Convergence</h2>
+    <div class="convergence-row">
+      <div class="stat">
+        <span class="stat-label">Acceptance Rate</span>
+        <span id="stat-rate" class="stat-value">-</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Total Samples</span>
+        <span id="stat-samples" class="stat-value">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Accepted</span>
+        <span id="stat-accepted" class="stat-value">0</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Round</span>
+        <span id="stat-round" class="stat-value">0</span>
+      </div>
+    </div>
+    <div id="convergence-bars" class="convergence-bars"></div>
+  </section>
+
+  <!-- Proposal Detail Modal -->
+  <div id="proposal-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <button class="modal-close" id="modal-close">&times;</button>
+      <h2 id="modal-title">Proposal</h2>
+      <div id="modal-meta" class="modal-meta"></div>
+      <h3>Proposed <span class="math-tex">w'</span></h3>
+      <div id="modal-proposed-w" class="markdown-body"></div>
+      <h3>Reasoning <span class="math-tex">z'</span></h3>
+      <div id="modal-reasoning" class="modal-section"></div>
+      <h3>Observations <span class="math-tex">o</span></h3>
+      <div id="modal-observations" class="modal-section mono"></div>
+    </div>
+  </div>
+
+  <!-- About Modal -->
+  <div id="about-modal" class="modal-overlay" hidden>
+    <div class="modal">
+      <button class="modal-close" id="about-close">&times;</button>
+      <h2>CPC Platform</h2>
+      <p class="about-subtitle">Collective Predictive Coding for Distributed Bayesian Inference</p>
+      <h3>How It Works</h3>
+      <div class="about-steps">
+        <div class="about-step"><div class="step-num">1</div><div><strong>Propose</strong><p>Each agent independently investigates and proposes an update w' to the shared knowledge.</p></div></div>
+        <div class="about-step"><div class="step-num">2</div><div><strong>Review</strong><p>Agents are randomly paired. The reviewer scores consistency of w' vs w<sub>current</sub> with their own findings.</p></div></div>
+        <div class="about-step"><div class="step-num">3</div><div><strong>Accept/Reject</strong><p>MH acceptance: &alpha; = min(1, exp(logit(score') - logit(score))). If accepted, w<sub>current</sub> updates.</p></div></div>
+      </div>
+      <p>The sample set {w<sup>[1]</sup>, ..., w<sup>[I]</sup>} approximates the posterior q(w | o<sup>1</sup>, ..., o<sup>K</sup>).</p>
+      <p style="font-size:0.85rem;margin-top:1rem;">Based on: <em>Collective Predictive Coding as Model of Science</em> (Taniguchi et al., 2024). <a href="https://arxiv.org/abs/2409.00102" target="_blank">arXiv:2409.00102</a></p>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
