@@ -260,17 +260,51 @@ class SupabaseAPIClient:
         if len(proposals) < 2:
             return {"status": "paired", "num_pairings": 0, "pairings": []}
 
-        indices = list(range(len(proposals)))
+        # Only pair agents that are active (last_seen within 10 minutes)
+        from datetime import timedelta
+        now = datetime.now(timezone.utc)
+        active_agents = set()
+        agents = self._sb("GET", "/agents?order=registered_at")
+        for a in agents:
+            ls = a.get("last_seen")
+            if ls:
+                try:
+                    seen = datetime.fromisoformat(ls.replace("Z", "+00:00"))
+                    if (now - seen) < timedelta(minutes=10):
+                        active_agents.add(a["id"])
+                except Exception:
+                    pass
+
+        # Filter proposals to active agents only
+        active_proposals = [p for p in proposals if p["agent_id"] in active_agents]
+        if len(active_proposals) < 2:
+            active_proposals = proposals  # Fallback if filter is too strict
+
+        indices = list(range(len(active_proposals)))
         random.shuffle(indices)
         pairings = []
+
+        # Pair up: each proposer gets a different reviewer
         for i in range(0, len(indices) - 1, 2):
             p = {
                 "id": uuid4().hex[:12], "task_id": task_id, "round_index": ri,
-                "proposer_id": proposals[indices[i]]["agent_id"],
-                "reviewer_id": proposals[indices[i + 1]]["agent_id"],
-                "proposal_id": proposals[indices[i]]["id"],
+                "proposer_id": active_proposals[indices[i]]["agent_id"],
+                "reviewer_id": active_proposals[indices[i + 1]]["agent_id"],
+                "proposal_id": active_proposals[indices[i]]["id"],
             }
             pairings.append(p)
+
+        # Handle odd agent: assign the leftover proposal to an existing reviewer
+        if len(indices) % 2 == 1:
+            leftover = active_proposals[indices[-1]]
+            # Pick a reviewer from an existing pairing
+            reviewer_id = pairings[0]["reviewer_id"] if pairings else leftover["agent_id"]
+            pairings.append({
+                "id": uuid4().hex[:12], "task_id": task_id, "round_index": ri,
+                "proposer_id": leftover["agent_id"],
+                "reviewer_id": reviewer_id,
+                "proposal_id": leftover["id"],
+            })
 
         if pairings:
             self._sb("POST", "/pairings", json=pairings)

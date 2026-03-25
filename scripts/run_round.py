@@ -31,6 +31,8 @@ def main() -> None:
                         help="Number of proposals to wait for in auto mode")
     parser.add_argument("--poll-interval", type=int, default=5,
                         help="Seconds between polls in auto mode")
+    parser.add_argument("--review-timeout", type=int, default=300,
+                        help="Seconds to wait for reviews before forcing completion")
     args = parser.parse_args()
 
     if args.supabase_url and args.supabase_key:
@@ -54,7 +56,7 @@ def main() -> None:
     elif args.action == "status":
         do_status(client, args.task_id)
     elif args.action == "auto":
-        do_auto(client, args.task_id, args.wait_for_agents, args.poll_interval)
+        do_auto(client, args.task_id, args.wait_for_agents, args.poll_interval, args.review_timeout)
 
 
 def do_start(client: httpx.Client, task_id: str) -> None:
@@ -64,13 +66,16 @@ def do_start(client: httpx.Client, task_id: str) -> None:
     print(f"Round {data['round_index']} started (phase: {data['phase']})")
 
 
-def do_pair(client: httpx.Client, task_id: str) -> None:
+def do_pair(client, task_id: str) -> int:
     resp = client.post(f"/rounds/{task_id}/pair")
-    resp.raise_for_status()
-    data = resp.json()
-    print(f"Created {data['num_pairings']} pairings:")
-    for p in data["pairings"]:
+    if hasattr(resp, 'raise_for_status'):
+        resp.raise_for_status()
+    data = resp.json() if hasattr(resp, 'json') else resp
+    num = data.get('num_pairings', 0)
+    print(f"Created {num} pairings:")
+    for p in data.get("pairings", []):
         print(f"  {p['proposer_id']} → reviewed by {p['reviewer_id']}")
+    return num
 
 
 def do_complete(client: httpx.Client, task_id: str) -> None:
@@ -103,10 +108,11 @@ def do_status(client: httpx.Client, task_id: str) -> None:
     print(f"Diagnostics: {diag}")
 
 
-def do_auto(client, task_id: str, wait_for: int, poll: int) -> None:
+def do_auto(client, task_id: str, wait_for: int, poll: int, review_timeout: int = 300) -> None:
     """Automated rounds: loops until Ctrl+C.
 
     Each round: start → wait for proposals → pair → wait for reviews → complete → next.
+    Handles odd agent counts and review timeouts.
     """
     # Initialize W pool
     print(f"Initializing W pool with {wait_for} slots...")
@@ -147,19 +153,37 @@ def do_auto(client, task_id: str, wait_for: int, poll: int) -> None:
                 print(f"  {count}/{wait_for} proposals, waiting {poll}s...")
                 time.sleep(poll)
 
-            # Pair
+            # Pair (handles odd counts — one reviewer gets 2 assignments)
             print()
-            do_pair(client, task_id)
+            pair_result = do_pair(client, task_id)
+            num_pairings = pair_result if isinstance(pair_result, int) else 0
 
-            # Wait for reviews
-            print(f"\nWaiting for reviews...")
+            # Wait for reviews with timeout
+            print(f"\nWaiting for reviews (timeout: {review_timeout}s)...")
+            review_start = time.time()
             while True:
                 reviews = client.get(f"/reviews/{task_id}").json()
                 current_round_reviews = [r for r in reviews if r.get("round_index") == round_index]
-                if len(current_round_reviews) > 0:
-                    print(f"Got {len(current_round_reviews)} reviews")
+
+                # Check if we have all expected reviews
+                if len(current_round_reviews) >= num_pairings and num_pairings > 0:
+                    print(f"Got all {len(current_round_reviews)} reviews")
                     break
-                print(f"  waiting for reviews... ({poll}s)")
+
+                # At least some reviews came in
+                if len(current_round_reviews) > 0:
+                    elapsed = time.time() - review_start
+                    if elapsed > review_timeout / 2:
+                        print(f"Got {len(current_round_reviews)} reviews, proceeding (partial timeout)")
+                        break
+
+                # Full timeout
+                elapsed = time.time() - review_start
+                if elapsed > review_timeout:
+                    print(f"Review timeout ({review_timeout}s). Got {len(current_round_reviews)} reviews, proceeding.")
+                    break
+
+                print(f"  {len(current_round_reviews)} reviews, waiting {poll}s... ({int(elapsed)}s/{review_timeout}s)")
                 time.sleep(poll)
 
             # Complete
