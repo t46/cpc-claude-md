@@ -71,35 +71,33 @@ class ClaudeCodeAgent(CPCAgent):
         return output
 
     async def propose(self, w_current: str, task_description: str) -> ProposalOutput:
-        prompt = f"""You are participating in a Collective Predictive Coding (CPC) research process.
-Your task is to investigate a problem and propose an update to the shared knowledge document.
+        prompt = f"""You are participating in a collaborative research process.
 
-## Research Problem
+## Task
 {task_description}
 
-## Current Shared Knowledge (w)
-{w_current if w_current else "(No findings yet — you are the first to investigate.)"}
+## Current shared document (proposed_w from previous round)
+{w_current if w_current else "(None yet — you are the first to investigate.)"}
 
 ## Instructions
-1. Read the current shared knowledge carefully.
-2. Investigate the problem autonomously — read files, run commands, analyze data, etc.
-3. Form a hypothesis based on your observations.
-4. Write a proposed update to the shared knowledge document.
+1. Read the current shared document above if it exists.
+2. Follow the task instructions — read files, run commands, investigate, etc.
+3. Produce your output in the exact format below.
 
 ## Output Format
 You MUST end your response with EXACTLY this structure (including the markers):
 
-===PROPOSAL_START===
-(Your proposed update to the shared knowledge document. Build on existing findings.)
-===PROPOSAL_END===
+===PROPOSED_W===
+(Your proposed shared document. This will be evaluated against other agents' proposals.)
+===END_PROPOSED_W===
 
-===REASONING_START===
+===REASONING===
 (Your hypothesis and reasoning — what you found and why you believe it.)
-===REASONING_END===
+===END_REASONING===
 
-===OBSERVATIONS_START===
-(Summary of key observations from your investigation — commands run, outputs seen, etc.)
-===OBSERVATIONS_END===
+===OBSERVATION_SUMMARY===
+(Summary of key observations from your investigation.)
+===END_OBSERVATION_SUMMARY===
 """
         output = await self._run_claude(prompt)
         return self._parse_proposal(output)
@@ -141,9 +139,9 @@ You MUST end your response with EXACTLY:
             except ValueError:
                 return ""
 
-        proposed_w = _extract(output, "===PROPOSAL_START===", "===PROPOSAL_END===")
-        reasoning = _extract(output, "===REASONING_START===", "===REASONING_END===")
-        observations = _extract(output, "===OBSERVATIONS_START===", "===OBSERVATIONS_END===")
+        proposed_w = _extract(output, "===PROPOSED_W===", "===END_PROPOSED_W===")
+        reasoning = _extract(output, "===REASONING===", "===END_REASONING===")
+        observations = _extract(output, "===OBSERVATION_SUMMARY===", "===END_OBSERVATION_SUMMARY===")
 
         # Fallback: if markers not found, use entire output as proposal
         if not proposed_w:
