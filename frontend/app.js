@@ -617,7 +617,7 @@ function renderHistory() {
       <h3>Current W Distribution (${wPool.length} slots)</h3>
       <div class="w-pool-grid">${wPool.map((slot, i) => {
         const preview = (slot.content || "").slice(0, 100);
-        return `<div class="w-pool-slot">
+        return `<div class="w-pool-slot" data-slot-content="${esc(slot.content || '')}" data-slot-index="${i}">
           <div class="w-pool-slot-header">Slot ${i}</div>
           <div class="w-pool-slot-content">${esc(preview) || '(empty)'}${preview.length >= 100 ? '...' : ''}</div>
         </div>`;
@@ -666,6 +666,19 @@ function renderHistory() {
   }).join("");
 
   container.innerHTML = html;
+
+  // Click W pool slots to show in modal
+  container.querySelectorAll(".w-pool-slot").forEach(el => {
+    el.addEventListener("click", () => {
+      const content = el.dataset.slotContent || "";
+      const index = el.dataset.slotIndex || "?";
+      $("#modal-title").textContent = `W Pool Slot ${index}`;
+      $("#modal-meta").textContent = "";
+      $("#modal-proposed-w").innerHTML = DOMPurify.sanitize(marked.parse(content || "(empty)"));
+      $("#modal-details").hidden = true;
+      $("#proposal-modal").hidden = false;
+    });
+  });
 
   // Click to show in modal
   container.querySelectorAll(".w-sample").forEach(el => {

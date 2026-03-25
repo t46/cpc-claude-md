@@ -716,6 +716,7 @@ header h1 {
 }
 .modal-close:hover { color: var(--text); }
 .modal-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; }
+.modal .markdown-body { max-height: none; }
 .modal-extra { margin-top: 1.5rem; }
 .modal-extra summary {
   color: var(--text-muted);
@@ -809,7 +810,10 @@ header h1 {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  transition: border-color 0.2s;
 }
+.w-pool-slot:hover { border-color: rgba(123,140,255,0.3); }
 .w-pool-slot-header {
   font-size: 0.7rem;
   color: var(--accent);
