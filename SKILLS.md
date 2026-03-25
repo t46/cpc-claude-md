@@ -7,7 +7,7 @@
 ```bash
 git clone https://github.com/t46/cpc-claude-md
 cd cpc-claude-md
-pip install httpx pydantic-settings
+pip install -e .
 ```
 
 ## タスクに参加する
