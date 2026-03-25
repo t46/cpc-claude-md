@@ -103,44 +103,60 @@ def do_status(client: httpx.Client, task_id: str) -> None:
     print(f"Diagnostics: {diag}")
 
 
-def do_auto(client: httpx.Client, task_id: str, wait_for: int, poll: int) -> None:
-    """Automated round: start → wait for proposals → pair → wait for reviews → complete."""
-    # Start
-    do_start(client, task_id)
-    rnd = client.get(f"/rounds/{task_id}/current").json()
-    round_index = rnd.get("round_index", 0)
+def do_auto(client, task_id: str, wait_for: int, poll: int) -> None:
+    """Automated rounds: loops until Ctrl+C.
 
-    # Wait for proposals
-    print(f"\nWaiting for {wait_for} proposals...")
-    while True:
-        proposals = client.get(f"/proposals/{task_id}").json()
-        current_round_proposals = [p for p in proposals if p.get("round_index") == round_index]
-        count = len(current_round_proposals)
-        if count >= wait_for:
-            print(f"Got {count} proposals")
-            break
-        print(f"  {count}/{wait_for} proposals, waiting {poll}s...")
-        time.sleep(poll)
+    Each round: start → wait for proposals → pair → wait for reviews → complete → next.
+    """
+    round_num = 0
+    try:
+        while True:
+            round_num += 1
+            print(f"\n{'='*50}")
+            print(f"AUTO ROUND {round_num}")
+            print(f"{'='*50}")
 
-    # Pair
-    print()
-    do_pair(client, task_id)
+            # Start
+            do_start(client, task_id)
+            rnd = client.get(f"/rounds/{task_id}/current").json()
+            round_index = rnd.get("round_index", 0)
 
-    # Wait for reviews
-    print(f"\nWaiting for reviews...")
-    pairings = client.get(f"/rounds/{task_id}/current").json()
-    while True:
-        reviews = client.get(f"/reviews/{task_id}").json()
-        current_round_reviews = [r for r in reviews if r.get("round_index") == round_index]
-        if len(current_round_reviews) > 0:
-            print(f"Got {len(current_round_reviews)} reviews")
-            break
-        print(f"  waiting for reviews... ({poll}s)")
-        time.sleep(poll)
+            # Wait for proposals
+            print(f"\nWaiting for {wait_for} proposals...")
+            while True:
+                proposals = client.get(f"/proposals/{task_id}").json()
+                current_round_proposals = [p for p in proposals if p.get("round_index") == round_index]
+                count = len(current_round_proposals)
+                if count >= wait_for:
+                    print(f"Got {count} proposals")
+                    break
+                print(f"  {count}/{wait_for} proposals, waiting {poll}s...")
+                time.sleep(poll)
 
-    # Complete
-    print()
-    do_complete(client, task_id)
+            # Pair
+            print()
+            do_pair(client, task_id)
+
+            # Wait for reviews
+            print(f"\nWaiting for reviews...")
+            while True:
+                reviews = client.get(f"/reviews/{task_id}").json()
+                current_round_reviews = [r for r in reviews if r.get("round_index") == round_index]
+                if len(current_round_reviews) > 0:
+                    print(f"Got {len(current_round_reviews)} reviews")
+                    break
+                print(f"  waiting for reviews... ({poll}s)")
+                time.sleep(poll)
+
+            # Complete
+            print()
+            do_complete(client, task_id)
+
+            print(f"\nRound {round_num} done. Starting next round...")
+            time.sleep(2)
+
+    except KeyboardInterrupt:
+        print(f"\n\nStopped after {round_num} rounds.")
 
 
 if __name__ == "__main__":
