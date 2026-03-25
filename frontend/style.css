@@ -95,18 +95,49 @@ header h1 {
 .status-dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); }
 .status-dot.offline { background: var(--red); }
 
-/* ===== Join Banner ===== */
-.join-banner {
+/* ===== Hero ===== */
+.hero {
   max-width: 1400px;
   margin: 0 auto 1.5rem;
-  background: linear-gradient(135deg, rgba(123,140,255,0.05), rgba(192,132,252,0.05));
-  border: 1px solid rgba(123,140,255,0.2);
+  position: relative;
   border-radius: var(--radius);
-  padding: 1.5rem;
+  overflow: hidden;
+  border: 1px solid rgba(123,140,255,0.15);
 }
-.join-inner { max-width: 800px; margin: 0 auto; text-align: center; }
-.join-text h2 { font-size: 1.2rem; margin-bottom: 0.3rem; }
-.join-text p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+#cpc-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.hero-content {
+  position: relative;
+  z-index: 1;
+  padding: 2rem 2rem 1.5rem;
+  text-align: center;
+  max-width: 700px;
+  margin: 0 auto;
+}
+.hero-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.hero-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 1.2rem;
+  line-height: 1.6;
+}
+.hero-desc em {
+  color: var(--accent);
+  font-style: italic;
+  -webkit-text-fill-color: var(--accent);
+}
 .join-card {
   display: flex;
   align-items: center;

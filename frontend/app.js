@@ -188,6 +188,7 @@ async function fetchFromAPI() {
 
 // ===== Rendering =====
 function renderAll() {
+  window._cpcState = state; // Expose for CPC visualization
   renderTask();
   renderWCurrent();
   renderActivityFeed();
