@@ -54,11 +54,13 @@ def setup_work_dir(data_dir: str, work_dir: str | None) -> str:
 def create_agent(args: argparse.Namespace, config: AgentConfig, work_dir: str) -> CPCAgent:
     if args.agent_type == "code":
         from cpc.agent.claude_code_agent import ClaudeCodeAgent
+        # In Supabase mode, don't send activity to FastAPI server
+        activity_url = "" if args.supabase_url else config.server_url
         return ClaudeCodeAgent(
             work_dir=work_dir,
             model=config.model_name,
             agent_id=config.agent_id,
-            server_url=config.server_url,
+            server_url=activity_url,
             task_id=config.task_id,
         )
 
