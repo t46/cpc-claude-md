@@ -282,12 +282,6 @@ header h1 {
 .stat-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
 .stat-value { font-size: 1.4rem; font-weight: 700; color: var(--accent); }
 
-.convergence-charts {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1.5rem;
-}
-.chart-section { }
 .chart-title {
   font-size: 0.8rem;
   color: var(--text-muted);
@@ -319,6 +313,7 @@ header h1 {
   align-items: flex-end;
   gap: 4px;
   height: 60px;
+  border-bottom: 1px solid var(--border);
 }
 .conv-bar-wrap {
   display: flex;

@@ -329,44 +329,14 @@ function renderConvergence() {
   const samples = state.samples.filter(s => s.task_id === taskId || !sb);
 
   const total = samples.length;
-  const accepted = samples.filter(s => s.accepted).length;
-  const rate = total > 0 ? (accepted / total * 100).toFixed(0) : "-";
-
-  $("#stat-rate").textContent = rate !== "-" ? `${rate}%` : "-";
   $("#stat-samples").textContent = total;
-  $("#stat-accepted").textContent = accepted;
 
   const currentRound = samples.length > 0
     ? Math.max(...samples.map(s => s.round_index || 0))
     : 0;
   $("#stat-round").textContent = currentRound;
 
-  // Per-round acceptance bars
-  const byRound = {};
-  for (const s of samples) {
-    const ri = s.round_index || 0;
-    if (!byRound[ri]) byRound[ri] = { total: 0, accepted: 0 };
-    byRound[ri].total++;
-    if (s.accepted) byRound[ri].accepted++;
-  }
-
-  const bars = $("#convergence-bars");
-  const roundKeys = Object.keys(byRound).map(Number).sort();
-  if (roundKeys.length === 0) {
-    bars.innerHTML = '<div class="empty">No data yet</div>';
-    return;
-  }
-
-  bars.innerHTML = roundKeys.map(ri => {
-    const d = byRound[ri];
-    const pct = d.total > 0 ? (d.accepted / d.total * 100) : 0;
-    return `<div class="conv-bar-wrap">
-      <div class="conv-bar" style="height:${Math.max(4, pct)}%" title="Round ${ri}: ${d.accepted}/${d.total} accepted"></div>
-      <div class="conv-bar-label">R${ri}</div>
-    </div>`;
-  }).join("");
-
-  // Log-compatibility chart: Σ logit(score_k(w)) per round
+  // Negative log-compatibility chart: -Σ logit(score_k(w)) per round
   // logit(s) = ln(s / (100 - s + 0.5)), approximating ln p(z^k | w)
   const reviews = state.reviews.filter(r => r.task_id === taskId || !sb);
   const logitScore = (s) => {

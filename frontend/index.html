@@ -66,16 +66,8 @@
     <h2>Convergence</h2>
     <div class="convergence-row">
       <div class="stat">
-        <span class="stat-label">Acceptance Rate</span>
-        <span id="stat-rate" class="stat-value">-</span>
-      </div>
-      <div class="stat">
         <span class="stat-label">Total Samples</span>
         <span id="stat-samples" class="stat-value">0</span>
-      </div>
-      <div class="stat">
-        <span class="stat-label">Accepted</span>
-        <span id="stat-accepted" class="stat-value">0</span>
       </div>
       <div class="stat">
         <span class="stat-label">Round</span>
@@ -86,16 +78,10 @@
         <span id="stat-logcompat" class="stat-value">-</span>
       </div>
     </div>
-    <div class="convergence-charts">
-      <div class="chart-section">
-        <h3 class="chart-title">Acceptance Rate per Round</h3>
-        <div id="convergence-bars" class="convergence-bars"></div>
-      </div>
-      <div class="chart-section">
-        <h3 class="chart-title">Negative Log-Compatibility <span class="chart-info" title="-LC = -Σ_k logit(score_k(w)), where logit(s) = ln(s/(100-s+ε)). Approximates a component of the variational free energy F. Decreases as MHNG converges — lower = w better explains agents' hypotheses z^k.">?</span></h3>
-        <div class="chart-formula">-LC = -Σ<sub>k</sub> logit(score<sub>k</sub>(w)), &ensp; logit(s) = ln(s / (100 - s + ε))</div>
-        <div id="logcompat-chart" class="convergence-bars"></div>
-      </div>
+    <div>
+      <h3 class="chart-title">Negative Log-Compatibility <span class="chart-info" title="-LC = -Σ_k logit(score_k(w)), where logit(s) = ln(s/(100-s+ε)). Approximates a component of the variational free energy F. Decreases as MHNG converges — lower = w better explains agents' hypotheses z^k.">?</span></h3>
+      <div class="chart-formula">-LC = -Σ<sub>k</sub> logit(score<sub>k</sub>(w)), &ensp; logit(s) = ln(s / (100 - s + ε))</div>
+      <div id="logcompat-chart" class="convergence-bars"></div>
     </div>
   </section>
 
