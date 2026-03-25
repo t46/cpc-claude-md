@@ -136,6 +136,16 @@ class SupabaseAPIClient:
         if m and method == "GET":
             return self._get_samples(m.group(1))
 
+        # POST /w-pool/{task_id}/init
+        m = re.match(r"/w-pool/(.+)/init$", path)
+        if m and method == "POST":
+            return self._init_w_pool(m.group(1), json.get("num_slots", 2))
+
+        # GET /w-pool/{task_id}
+        m = re.match(r"/w-pool/(.+)$", path)
+        if m and method == "GET":
+            return self._get_w_pool(m.group(1))
+
         # GET /diagnostics/{task_id}
         m = re.match(r"/diagnostics/(.+)$", path)
         if m and method == "GET":
@@ -209,22 +219,32 @@ class SupabaseAPIClient:
 
     def _pull_w(self, task_id: str) -> dict:
         data = self._sb("GET", f"/rounds?task_id=eq.{task_id}&order=round_index.desc&limit=1")
+        round_index = data[0]["round_index"] if data else -1
+
+        # Sample from W pool if it exists
+        pool = self._sb("GET", f"/w_pool?task_id=eq.{task_id}&order=slot_index")
+        if pool:
+            slot = random.choice(pool)
+            return {"frozen_w": slot["content"], "round_index": round_index, "w_pool_slot": slot["slot_index"]}
+
+        # Fallback to frozen_w
         if data:
-            return {"frozen_w": data[0]["frozen_w"], "round_index": data[0]["round_index"]}
+            return {"frozen_w": data[0]["frozen_w"], "round_index": round_index}
         task = self._get_task(task_id)
         return {"frozen_w": task.get("initial_w", ""), "round_index": -1}
 
     def _submit_proposal(self, task_id: str, json: dict) -> dict:
         current = self._sb("GET", f"/rounds?task_id=eq.{task_id}&order=round_index.desc&limit=1")
         ri = current[0]["round_index"] if current else 0
-        frozen_w = current[0]["frozen_w"] if current else ""
         pid = uuid4().hex[:12]
         self._sb("POST", "/proposals", json={
             "id": pid, "agent_id": json["agent_id"], "task_id": task_id,
-            "round_index": ri, "current_w": frozen_w,
+            "round_index": ri,
+            "current_w": json.get("current_w", ""),
             "proposed_w": json["proposed_w"],
             "observation_summary": json.get("observation_summary", ""),
             "reasoning": json.get("reasoning", ""),
+            "w_pool_slot": json.get("w_pool_slot"),
         })
         now = datetime.now(timezone.utc).isoformat()
         self._sb_patch(f"/agents?id=eq.{json['agent_id']}", {"last_seen": now})
@@ -305,14 +325,25 @@ class SupabaseAPIClient:
         reviews = self._sb("GET", f"/reviews?task_id=eq.{task_id}&round_index=eq.{ri}")
         accepted_count = 0
         for r in reviews:
-            if r["accepted"]:
-                proposals = self._sb("GET", f"/proposals?id=eq.{r['proposal_id']}")
-                content = proposals[0]["proposed_w"] if proposals else ""
-                proposer_id = proposals[0]["agent_id"] if proposals else ""
+            proposals = self._sb("GET", f"/proposals?id=eq.{r['proposal_id']}")
+            proposal = proposals[0] if proposals else None
+
+            if r["accepted"] and proposal:
+                content = proposal["proposed_w"]
+                proposer_id = proposal["agent_id"]
                 accepted_count += 1
+
+                # Update W pool slot if tracked
+                slot = proposal.get("w_pool_slot")
+                if slot is not None:
+                    now = datetime.now(timezone.utc).isoformat()
+                    self._sb_patch(
+                        f"/w_pool?task_id=eq.{task_id}&slot_index=eq.{slot}",
+                        {"content": content, "updated_at": now},
+                    )
             else:
-                content = current[0]["frozen_w"]
-                proposer_id = ""
+                content = proposal["current_w"] if proposal else current[0]["frozen_w"]
+                proposer_id = proposal["agent_id"] if proposal else ""
 
             self._sb("POST", "/samples", json={
                 "id": uuid4().hex[:12], "task_id": task_id, "content": content,
@@ -326,6 +357,30 @@ class SupabaseAPIClient:
                       {"phase": "completed", "completed_at": now})
 
         return {"status": "completed", "num_samples": len(reviews), "num_accepted": accepted_count}
+
+    def _init_w_pool(self, task_id: str, num_slots: int) -> dict:
+        """Initialize W pool with num_slots copies of initial_w."""
+        # Check if pool already exists
+        existing = self._sb("GET", f"/w_pool?task_id=eq.{task_id}")
+        if existing:
+            return {"status": "already_initialized", "num_slots": len(existing)}
+
+        task = self._get_task(task_id)
+        initial_w = task.get("initial_w", "")
+
+        slots = []
+        for i in range(num_slots):
+            slots.append({
+                "id": uuid4().hex[:12],
+                "task_id": task_id,
+                "content": initial_w,
+                "slot_index": i,
+            })
+        self._sb("POST", "/w_pool", json=slots)
+        return {"status": "initialized", "num_slots": num_slots}
+
+    def _get_w_pool(self, task_id: str) -> list:
+        return self._sb("GET", f"/w_pool?task_id=eq.{task_id}&order=slot_index")
 
     def _get_proposals(self, task_id: str) -> list:
         return self._sb("GET", f"/proposals?task_id=eq.{task_id}&order=created_at")

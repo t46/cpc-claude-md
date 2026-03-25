@@ -46,11 +46,12 @@ class AgentRunner:
         task_data = self._api("get", f"/tasks/{task_id}")
         task_description = task_data["description"]
 
-        # Phase 1: Pull w^{[i-1]}
+        # Phase 1: Pull w (sampled from W pool if available)
         w_data = self._api("get", f"/rounds/{task_id}/pull")
         w_current = w_data["frozen_w"]
         round_index = w_data["round_index"]
-        logger.info(f"Round {round_index}: pulled w ({len(w_current)} chars)")
+        w_pool_slot = w_data.get("w_pool_slot")
+        logger.info(f"Round {round_index}: pulled w ({len(w_current)} chars, slot={w_pool_slot})")
 
         # Phase 2: Propose (agent runs autonomously)
         proposal, output = await run_propose(
@@ -66,6 +67,8 @@ class AgentRunner:
             "proposed_w": proposal.proposed_w,
             "observation_summary": proposal.observation_summary,
             "reasoning": proposal.reasoning,
+            "current_w": w_current,
+            "w_pool_slot": w_pool_slot,
         })
         logger.info(f"Submitted proposal {data['proposal_id']}")
 

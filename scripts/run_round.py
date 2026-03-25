@@ -108,6 +108,20 @@ def do_auto(client, task_id: str, wait_for: int, poll: int) -> None:
 
     Each round: start → wait for proposals → pair → wait for reviews → complete → next.
     """
+    # Initialize W pool
+    print(f"Initializing W pool with {wait_for} slots...")
+    client.post(f"/w-pool/{task_id}/init", json={"num_slots": wait_for})
+
+    # Wait for agents to register
+    print(f"Waiting for {wait_for} agents to register...")
+    while True:
+        agents = client.get("/agents").json()
+        if len(agents) >= wait_for:
+            print(f"Got {len(agents)} agents: {[a.get('id', a.get('agent_id', '?')) for a in agents]}")
+            break
+        print(f"  {len(agents)}/{wait_for} agents, waiting {poll}s...")
+        time.sleep(poll)
+
     round_num = 0
     try:
         while True:

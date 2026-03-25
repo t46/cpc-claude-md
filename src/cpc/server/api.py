@@ -54,6 +54,8 @@ class SubmitProposalRequest(BaseModel):
     proposed_w: str
     observation_summary: str = ""
     reasoning: str = ""
+    current_w: str = ""
+    w_pool_slot: int | None = None
 
 
 class SubmitReviewRequest(BaseModel):

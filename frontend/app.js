@@ -111,7 +111,7 @@ async function fetchAll() {
 }
 
 async function fetchFromSupabase() {
-  const [tasks, agents, proposals, reviews, samples, rounds, activity] = await Promise.all([
+  const [tasks, agents, proposals, reviews, samples, rounds, activity, wPool] = await Promise.all([
     sb.from("tasks").select("*").order("created_at"),
     sb.from("agents").select("*").order("registered_at"),
     sb.from("proposals").select("*").order("created_at"),
@@ -119,11 +119,13 @@ async function fetchFromSupabase() {
     sb.from("samples").select("*").order("created_at"),
     sb.from("rounds").select("*").order("round_index"),
     sb.from("activity").select("*").order("created_at", { ascending: false }).limit(50),
+    sb.from("w_pool").select("*").order("slot_index"),
   ]);
   state.tasks = tasks.data || [];
   state.agents = agents.data || [];
   state.proposals = proposals.data || [];
   state.agentActivity = activity.data || [];
+  state.wPool = wPool.data || [];
   state.reviews = reviews.data || [];
   state.samples = samples.data || [];
   state.rounds = rounds.data || [];
@@ -183,6 +185,11 @@ async function fetchFromAPI() {
       const activityResp = await fetch(`${base}/activity/${taskId}`);
       state.agentActivity = await activityResp.json();
     } catch { state.agentActivity = []; }
+
+    try {
+      const wpoolResp = await fetch(`${base}/w-pool/${taskId}`);
+      state.wPool = await wpoolResp.json();
+    } catch { state.wPool = []; }
   }
 }
 
@@ -313,7 +320,8 @@ function renderDialogue() {
     const resultCls = r.accepted ? "dialogue-accepted" : "dialogue-rejected";
     const resultIcon = r.accepted ? "&#x2705;" : "&#x274C;";
     const resultText = r.accepted ? "Accepted" : "Rejected";
-    const proposalPreview = (proposal.proposed_w || "").slice(0, 150);
+    const wPreview = (proposal.current_w || "").slice(0, 100);
+    const wPrimePreview = (proposal.proposed_w || "").slice(0, 100);
 
     dialogues.push({
       time: r.created_at || "",
@@ -323,18 +331,23 @@ function renderDialogue() {
           <span class="dialogue-arrow">&#x27A1;</span>
           <span class="dialogue-listener">${esc(r.reviewer_id)}</span>
         </div>
-        <div class="dialogue-body">
-          <div class="dialogue-proposal clickable" data-proposal-id="${esc(proposal.id || proposal.proposal_id || '')}">
-            <div class="dialogue-label">proposes w'</div>
-            <div class="dialogue-preview">${esc(proposalPreview)}${proposalPreview.length >= 150 ? '...' : ''}</div>
+        <div class="dialogue-comparison">
+          <div class="dialogue-w">
+            <div class="dialogue-label">w (sampled)</div>
+            <div class="dialogue-w-preview">${esc(wPreview) || '(empty)'}${wPreview.length >= 100 ? '...' : ''}</div>
           </div>
-          <div class="dialogue-result">
-            <span class="dialogue-verdict">${resultIcon} ${resultText}</span>
-            <span class="dialogue-score">r=${alpha}</span>
-            <span class="dialogue-scores">${r.score_proposed?.toFixed(0) || '?'} / ${r.score_current?.toFixed(0) || '?'}</span>
+          <div class="dialogue-vs">vs</div>
+          <div class="dialogue-w clickable" data-proposal-id="${esc(proposal.id || proposal.proposal_id || '')}">
+            <div class="dialogue-label">w' (proposed)</div>
+            <div class="dialogue-w-preview">${esc(wPrimePreview)}${wPrimePreview.length >= 100 ? '...' : ''}</div>
           </div>
         </div>
-        <div class="dialogue-time">${timeAgo(r.created_at)}</div>
+        <div class="dialogue-result-row">
+          <span class="dialogue-verdict">${resultIcon} ${resultText}</span>
+          <span class="dialogue-score">r=${alpha}</span>
+          <span class="dialogue-scores">${r.score_proposed?.toFixed(0) || '?'} / ${r.score_current?.toFixed(0) || '?'}</span>
+          <span class="dialogue-time">${timeAgo(r.created_at)}</span>
+        </div>
       </div>`
     });
   }
@@ -526,35 +539,69 @@ function renderHistory() {
   if (!container) return;
 
   const taskId = state.selectedTaskId;
-  const samples = state.samples.filter(s => s.accepted && (s.task_id === taskId || !sb));
+  const allSamples = state.samples.filter(s => s.task_id === taskId || !sb);
+  const wPool = state.wPool || [];
 
-  if (samples.length === 0) {
-    container.innerHTML = '<div class="empty">No accepted samples yet — w has not emerged.</div>';
+  let html = "";
+
+  // Show current W distribution if pool exists
+  if (wPool.length > 0) {
+    html += `<div class="w-pool-section">
+      <h3>Current W Distribution (${wPool.length} slots)</h3>
+      <div class="w-pool-grid">${wPool.map((slot, i) => {
+        const preview = (slot.content || "").slice(0, 100);
+        return `<div class="w-pool-slot">
+          <div class="w-pool-slot-header">Slot ${i}</div>
+          <div class="w-pool-slot-content">${esc(preview) || '(empty)'}${preview.length >= 100 ? '...' : ''}</div>
+        </div>`;
+      }).join("")}</div>
+    </div>`;
+  }
+
+  // Group samples by round
+  const byRound = {};
+  for (const s of allSamples) {
+    const ri = s.round_index ?? 0;
+    if (!byRound[ri]) byRound[ri] = [];
+    byRound[ri].push(s);
+  }
+
+  const roundKeys = Object.keys(byRound).map(Number).sort().reverse();
+
+  if (roundKeys.length === 0 && wPool.length === 0) {
+    container.innerHTML = '<div class="empty">No samples yet — w has not emerged.</div>';
     return;
   }
 
-  container.innerHTML = samples.map((s, i) => {
-    const contentHtml = DOMPurify.sanitize(marked.parse(s.content || ""));
-    const time = s.created_at ? new Date(s.created_at).toLocaleString() : "";
-    const proposer = s.proposer_id || "?";
-    const isLatest = i === samples.length - 1;
+  html += roundKeys.map(ri => {
+    const roundSamples = byRound[ri];
+    const accepted = roundSamples.filter(s => s.accepted);
+    const rejected = roundSamples.filter(s => !s.accepted);
 
-    return `<div class="w-step ${isLatest ? 'w-step-current' : ''}">
-      <div class="w-step-marker">
-        <div class="w-step-dot ${isLatest ? 'current' : ''}"></div>
-        ${i < samples.length - 1 ? '<div class="w-step-line"></div>' : ''}
+    return `<div class="w-round">
+      <div class="w-round-header">
+        <span class="w-round-label">Round ${ri}</span>
+        <span class="w-round-stats">${accepted.length} accepted, ${rejected.length} rejected</span>
       </div>
-      <div class="w-step-content">
-        <div class="w-step-header">
-          <span class="w-step-label">${isLatest ? 'w<sub>current</sub>' : 'w<sup>[' + i + ']</sup>'}</span>
-          <span class="w-step-round">Round ${s.round_index ?? '?'}</span>
-          <span class="w-step-by">by ${esc(proposer)}</span>
-          <span class="w-step-time">${time}</span>
-        </div>
-        <div class="w-step-body markdown-body">${contentHtml}</div>
+      <div class="w-round-samples">
+        ${roundSamples.map(s => {
+          const contentHtml = DOMPurify.sanitize(marked.parse(s.content || ""));
+          const statusCls = s.accepted ? "w-sample-accepted" : "w-sample-rejected";
+          const statusIcon = s.accepted ? "&#x2705;" : "&#x274C;";
+          return `<div class="w-sample ${statusCls}">
+            <div class="w-sample-header">
+              <span>${statusIcon}</span>
+              <span class="w-sample-by">by ${esc(s.proposer_id || '?')}</span>
+              <span class="w-sample-time">${s.created_at ? timeAgo(s.created_at) : ''}</span>
+            </div>
+            <div class="w-sample-body markdown-body">${contentHtml}</div>
+          </div>`;
+        }).join("")}
       </div>
     </div>`;
   }).join("");
+
+  container.innerHTML = html;
 }
 
 function renderSamples() {
