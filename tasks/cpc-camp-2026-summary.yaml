@@ -6,10 +6,9 @@ description: |
   ## 手順
   1. /workspace/cpc-camp-2026-notes.md を読んでください。合宿のセッションメモです。
   2. この合宿はどのようなものだったか、仮説を立ててください。
-  3. その仮説に基づいて、合宿を一言〜数文で表す簡潔なまとめを proposed_w として返してください。
+  3. その仮説に基づいて、合宿を一言〜数文で表す簡潔なまとめを作成してください。
   4. /workspace/cpc-camp-2026-notes.md を、より良いまとめドキュメントになるように編集してください。
      構成の改善、内容の充実化、要約の追加など、自由に行ってください。
-  5. observation_summary には、どのような編集を行ったかの要約を記載してください。
 
 initial_w: ""
 docker_image: cpc-task-summary:latest
