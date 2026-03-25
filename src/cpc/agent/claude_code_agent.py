@@ -61,7 +61,7 @@ class ClaudeCodeAgent(CPCAgent):
             pass  # Non-critical, don't block agent
 
     async def _run_claude(self, prompt: str, phase: str = "") -> str:
-        """Run `claude` CLI with stream-json, capture tool_use events."""
+        """Run `claude` CLI with stream-json, send tool_use events in real-time."""
         if phase:
             self._send_activity("status", phase)
 
@@ -79,47 +79,50 @@ class ClaudeCodeAgent(CPCAgent):
         )
 
         result_text = ""
-        stdout_data = b""
 
         try:
-            stdout_bytes, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=self._timeout
-            )
-            stdout_data = stdout_bytes or b""
+            # Read stdout line-by-line as it streams
+            while True:
+                line = await asyncio.wait_for(
+                    proc.stdout.readline(), timeout=self._timeout
+                )
+                if not line:
+                    break  # EOF
+
+                line_str = line.decode("utf-8", errors="replace").strip()
+                if not line_str:
+                    continue
+
+                try:
+                    event = json.loads(line_str)
+                except json.JSONDecodeError:
+                    continue
+
+                event_type = event.get("type", "")
+
+                # Send tool_use events immediately
+                if event_type == "assistant":
+                    msg = event.get("message", {})
+                    content = msg.get("content", [])
+                    for block in content:
+                        if block.get("type") == "tool_use":
+                            tool_name = block.get("name", "?")
+                            tool_input = block.get("input", {})
+                            detail = self._summarize_tool_use(tool_name, tool_input)
+                            self._send_activity("tool_use", detail)
+
+                # Capture final result
+                if event_type == "result":
+                    result_text = event.get("result", "")
+
         except asyncio.TimeoutError:
             proc.kill()
             return f"[timeout after {self._timeout}s]"
 
-        # Parse stream-json lines
-        for line in stdout_data.decode("utf-8", errors="replace").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                event = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-
-            event_type = event.get("type", "")
-
-            # Capture tool_use events
-            if event_type == "assistant":
-                msg = event.get("message", {})
-                content = msg.get("content", [])
-                for block in content:
-                    if block.get("type") == "tool_use":
-                        tool_name = block.get("name", "?")
-                        tool_input = block.get("input", {})
-                        # Build a human-readable summary
-                        detail = self._summarize_tool_use(tool_name, tool_input)
-                        self._send_activity("tool_use", detail)
-
-            # Capture final result
-            if event_type == "result":
-                result_text = event.get("result", "")
+        await proc.wait()
 
         if proc.returncode != 0 and not result_text:
-            result_text = stdout_data.decode("utf-8", errors="replace")
+            result_text = f"[claude exit code: {proc.returncode}]"
 
         return result_text
 
