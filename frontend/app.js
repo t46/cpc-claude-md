@@ -24,6 +24,8 @@ let state = {
   prevReviewCount: 0,
   laneAgents: [null],
   wPool: [],
+  investigationRound: null,  // null = all, number = specific round
+  dialogueRound: null,
 };
 
 const $ = (sel) => document.querySelector(sel);
@@ -226,7 +228,31 @@ function renderWCurrent() {
   }
 }
 
+function renderRoundTabs(containerId, rounds, selectedRound, onSelect) {
+  const container = $(containerId);
+  if (!container) return;
+  const roundIndices = [...new Set(rounds.map(r => r.round_index ?? 0))].sort();
+  const tabs = [`<button class="round-tab ${selectedRound === null ? 'active' : ''}" data-round="all">All</button>`];
+  for (const ri of roundIndices) {
+    tabs.push(`<button class="round-tab ${selectedRound === ri ? 'active' : ''}" data-round="${ri}">R${ri}</button>`);
+  }
+  container.innerHTML = tabs.join("");
+  container.querySelectorAll(".round-tab").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const val = btn.dataset.round;
+      onSelect(val === "all" ? null : parseInt(val));
+    });
+  });
+}
+
 function renderActivityFeed() {
+  // Round tabs for investigation (based on rounds data)
+  const allRounds = (state.rounds || []).map(r => ({ round_index: r.round_index ?? 0 }));
+  renderRoundTabs("#investigation-round-tabs", allRounds, state.investigationRound, (round) => {
+    state.investigationRound = round;
+    renderActivityFeed();
+  });
+
   const events = [];
   for (const a of (state.agentActivity || [])) {
     const time = a.timestamp || a.created_at || "";
@@ -271,8 +297,20 @@ function renderDialogue() {
   const feed = $("#dialogue-feed");
   if (!feed) return;
 
-  const proposals = state.proposals.filter(p => p.task_id === taskId || !sb);
-  const reviews = state.reviews.filter(r => r.task_id === taskId || !sb);
+  let proposals = state.proposals.filter(p => p.task_id === taskId || !sb);
+  let reviews = state.reviews.filter(r => r.task_id === taskId || !sb);
+
+  // Round tabs
+  renderRoundTabs("#dialogue-round-tabs", [...proposals, ...reviews], state.dialogueRound, (round) => {
+    state.dialogueRound = round;
+    renderDialogue();
+  });
+
+  // Filter by round
+  if (state.dialogueRound !== null) {
+    proposals = proposals.filter(p => (p.round_index ?? 0) === state.dialogueRound);
+    reviews = reviews.filter(r => (r.round_index ?? 0) === state.dialogueRound);
+  }
 
   // Build dialogues: match reviews to proposals to form conversations
   const dialogues = [];

@@ -310,6 +310,23 @@ header h1 {
   flex-wrap: wrap;
 }
 .activity-header h2 { margin-bottom: 0; }
+.round-tabs { display: flex; gap: 0.2rem; flex-wrap: wrap; }
+.round-tab {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.7rem;
+  transition: all 0.2s;
+}
+.round-tab:hover { color: var(--text); border-color: rgba(123,140,255,0.3); }
+.round-tab.active {
+  background: rgba(123,140,255,0.1);
+  color: var(--accent);
+  border-color: rgba(123,140,255,0.3);
+}
 .agent-toggles { display: flex; gap: 0.5rem; }
 .agent-select {
   background: var(--bg);
