@@ -201,10 +201,12 @@ header h1 {
 
 /* ===== Task Panel ===== */
 .task-desc {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text);
   margin-bottom: 0.75rem;
   line-height: 1.5;
+  max-height: 200px;
+  overflow-y: auto;
 }
 .round-progress { margin-top: 0.5rem; }
 .progress-label { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.3rem; }
@@ -345,9 +347,11 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.4rem 0;
+  padding: 0.5rem 0;
   font-size: 0.85rem;
+  border-bottom: 1px solid var(--border);
 }
+.agent-card:last-child { border-bottom: none; }
 .agent-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
@@ -356,8 +360,19 @@ header h1 {
 .agent-dot.active { background: var(--green); box-shadow: 0 0 4px var(--green); }
 .agent-dot.idle { background: var(--yellow); }
 .agent-dot.offline { background: var(--text-muted); }
-.agent-name { font-weight: 600; }
-.agent-spec { color: var(--text-muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-info { flex: 1; min-width: 0; }
+.agent-name { font-weight: 600; display: block; }
+.agent-spec { color: var(--text-muted); font-size: 0.75rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.agent-status-label {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.agent-status-label.active { background: rgba(63,185,80,0.15); color: var(--green); }
+.agent-status-label.idle { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.agent-status-label.offline { background: rgba(139,148,158,0.1); color: var(--text-muted); }
+.agent-lastseen { font-size: 0.7rem; color: var(--text-muted); flex-shrink: 0; }
 
 /* ===== MHNG Chain ===== */
 .chain-scroll {

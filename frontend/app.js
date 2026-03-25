@@ -202,8 +202,7 @@ function renderTask() {
   const task = state.tasks.find(t => (t.id || t.task_id) === taskId);
   if (task) {
     const desc = task.description || "";
-    const truncDesc = desc.length > 300 ? desc.slice(0, 300) + "..." : desc;
-    $("#task-description").innerHTML = DOMPurify.sanitize(marked.parse(truncDesc));
+    $("#task-description").innerHTML = DOMPurify.sanitize(marked.parse(desc));
 
     const maxRounds = task.max_rounds || 100;
     const currentRound = state.rounds.length > 0
@@ -331,10 +330,16 @@ function renderAgents() {
     const spec = a.specialization || "";
     const lastSeen = a.last_seen;
     const status = getAgentStatus(lastSeen);
+    const statusLabel = status === "active" ? "active" : status === "idle" ? "idle" : "offline";
+    const lastSeenText = lastSeen ? timeAgo(lastSeen) : "never";
     return `<div class="agent-card">
       <span class="agent-dot ${status}"></span>
-      <span class="agent-name">${esc(id)}</span>
-      <span class="agent-spec">${esc(spec)}</span>
+      <div class="agent-info">
+        <span class="agent-name">${esc(id)}</span>
+        <span class="agent-spec">${esc(spec)}</span>
+      </div>
+      <span class="agent-status-label ${status}">${statusLabel}</span>
+      <span class="agent-lastseen">${lastSeenText}</span>
     </div>`;
   }).join("");
 }
