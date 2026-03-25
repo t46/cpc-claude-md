@@ -855,9 +855,20 @@ header h1 {
 .w-sample-by { color: var(--text-muted); }
 .w-sample-time { color: var(--text-muted); font-size: 0.75rem; margin-left: auto; }
 .w-sample-body {
-  max-height: 200px;
-  overflow-y: auto;
+  max-height: 3em;
+  overflow: hidden;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: max-height 0.3s ease;
 }
+.w-sample.expanded .w-sample-body {
+  max-height: none;
+  overflow-y: auto;
+  color: var(--text);
+}
+.w-sample { cursor: pointer; transition: border-color 0.2s; }
+.w-sample:hover { border-color: rgba(123,140,255,0.3); }
 
 /* ===== Samples View ===== */
 .panel-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem; }

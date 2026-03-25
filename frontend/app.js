@@ -667,6 +667,11 @@ function renderHistory() {
   }).join("");
 
   container.innerHTML = html;
+
+  // Click to expand/collapse samples
+  container.querySelectorAll(".w-sample").forEach(el => {
+    el.addEventListener("click", () => el.classList.toggle("expanded"));
+  });
 }
 
 function renderSamples() {
