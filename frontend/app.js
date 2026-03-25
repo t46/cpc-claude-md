@@ -193,6 +193,7 @@ function renderAll() {
   renderWCurrent();
   renderActivityFeed();
   renderAgents();
+  renderDialogue();
   renderMHNGChain();
   renderConvergence();
   renderSamples();
@@ -232,24 +233,8 @@ function renderWCurrent() {
 function renderActivityFeed() {
   const taskId = state.selectedTaskId;
 
-  // Build all events with agent_id
+  // Investigation phase: only tool_use/status events (not proposals/reviews — those go to dialogue)
   const events = [];
-  const proposals = state.proposals.filter(p => p.task_id === taskId || !sb);
-  const reviews = state.reviews.filter(r => r.task_id === taskId || !sb);
-
-  for (const p of proposals) {
-    const time = p.created_at || "";
-    const obs = p.observation_summary ? p.observation_summary.slice(0, 120) : "";
-    const pid = p.id || p.proposal_id || "";
-    events.push({ agent_id: p.agent_id, time, html: `<div class="event event-propose clickable ${isNew(time) ? 'event-new' : ''}" data-proposal-id="${esc(pid)}"><span class="event-icon">&#x1F7E2;</span><span class="event-agent">${esc(p.agent_id)}</span> proposed${obs ? ` <span class="event-obs">"${esc(obs)}${obs.length >= 120 ? '...' : ''}"</span>` : ''}<span class="event-time">${timeAgo(time)}</span></div>` });
-  }
-  for (const r of reviews) {
-    const time = r.created_at || "";
-    const icon = r.accepted ? "&#x2705;" : "&#x274C;";
-    const cls = r.accepted ? "event-accept" : "event-reject";
-    const alpha = typeof r.log_alpha === "number" ? `r=${Math.min(1, Math.exp(Math.min(r.log_alpha, 5))).toFixed(2)}` : "";
-    events.push({ agent_id: r.reviewer_id, time, html: `<div class="event ${cls} ${isNew(time) ? 'event-new' : ''}"><span class="event-icon">${icon}</span><span class="event-agent">${esc(r.reviewer_id)}</span> ${r.accepted ? "ACCEPTED" : "rejected"}<span class="event-scores">(${r.score_proposed?.toFixed(0) || '?'}/${r.score_current?.toFixed(0) || '?'}) ${alpha}</span><span class="event-time">${timeAgo(time)}</span></div>` });
-  }
   for (const a of (state.agentActivity || [])) {
     const time = a.timestamp || a.created_at || "";
     const isToolUse = a.activity_type === "tool_use";
@@ -302,6 +287,88 @@ function renderActivityFeed() {
       el.addEventListener("click", () => showProposalModal(el.dataset.proposalId));
     });
   }
+}
+
+function renderDialogue() {
+  const taskId = state.selectedTaskId;
+  const feed = $("#dialogue-feed");
+  if (!feed) return;
+
+  const proposals = state.proposals.filter(p => p.task_id === taskId || !sb);
+  const reviews = state.reviews.filter(r => r.task_id === taskId || !sb);
+
+  // Build dialogues: match reviews to proposals to form conversations
+  const dialogues = [];
+
+  for (const r of reviews) {
+    const proposal = proposals.find(p => (p.id || p.proposal_id) === r.proposal_id);
+    if (!proposal) continue;
+
+    const alpha = typeof r.log_alpha === "number"
+      ? Math.min(1, Math.exp(Math.min(r.log_alpha, 5))).toFixed(2) : "?";
+    const resultCls = r.accepted ? "dialogue-accepted" : "dialogue-rejected";
+    const resultIcon = r.accepted ? "&#x2705;" : "&#x274C;";
+    const resultText = r.accepted ? "Accepted" : "Rejected";
+    const proposalPreview = (proposal.proposed_w || "").slice(0, 150);
+
+    dialogues.push({
+      time: r.created_at || "",
+      html: `<div class="dialogue-card ${resultCls} ${isNew(r.created_at) ? 'event-new' : ''}">
+        <div class="dialogue-agents">
+          <span class="dialogue-speaker">${esc(proposal.agent_id)}</span>
+          <span class="dialogue-arrow">&#x27A1;</span>
+          <span class="dialogue-listener">${esc(r.reviewer_id)}</span>
+        </div>
+        <div class="dialogue-body">
+          <div class="dialogue-proposal clickable" data-proposal-id="${esc(proposal.id || proposal.proposal_id || '')}">
+            <div class="dialogue-label">proposes w'</div>
+            <div class="dialogue-preview">${esc(proposalPreview)}${proposalPreview.length >= 150 ? '...' : ''}</div>
+          </div>
+          <div class="dialogue-result">
+            <span class="dialogue-verdict">${resultIcon} ${resultText}</span>
+            <span class="dialogue-score">r=${alpha}</span>
+            <span class="dialogue-scores">${r.score_proposed?.toFixed(0) || '?'} / ${r.score_current?.toFixed(0) || '?'}</span>
+          </div>
+        </div>
+        <div class="dialogue-time">${timeAgo(r.created_at)}</div>
+      </div>`
+    });
+  }
+
+  // Also show pending proposals (not yet reviewed)
+  const reviewedProposalIds = new Set(reviews.map(r => r.proposal_id));
+  for (const p of proposals) {
+    const pid = p.id || p.proposal_id;
+    if (reviewedProposalIds.has(pid)) continue;
+    const preview = (p.proposed_w || "").slice(0, 150);
+    dialogues.push({
+      time: p.created_at || "",
+      html: `<div class="dialogue-card dialogue-pending ${isNew(p.created_at) ? 'event-new' : ''}">
+        <div class="dialogue-agents">
+          <span class="dialogue-speaker">${esc(p.agent_id)}</span>
+          <span class="dialogue-arrow">&#x2026;</span>
+          <span class="dialogue-listener">awaiting pair</span>
+        </div>
+        <div class="dialogue-body">
+          <div class="dialogue-proposal clickable" data-proposal-id="${esc(pid)}">
+            <div class="dialogue-label">proposes w'</div>
+            <div class="dialogue-preview">${esc(preview)}${preview.length >= 150 ? '...' : ''}</div>
+          </div>
+        </div>
+        <div class="dialogue-time">${timeAgo(p.created_at)}</div>
+      </div>`
+    });
+  }
+
+  dialogues.sort((a, b) => (b.time || "").localeCompare(a.time || ""));
+  $("#dialogue-count").textContent = dialogues.length;
+
+  feed.innerHTML = dialogues.map(d => d.html).join("")
+    || '<div class="empty">No language games yet — waiting for proposals...</div>';
+
+  feed.querySelectorAll("[data-proposal-id]").forEach(el => {
+    el.addEventListener("click", () => showProposalModal(el.dataset.proposalId));
+  });
 }
 
 function showProposalModal(proposalId) {
