@@ -4,8 +4,12 @@ version = "0.1.0"
 description = "Collective Predictive Coding platform for distributed Bayesian inference with AI agents"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.135.2",
     "httpx>=0.28",
     "pydantic-settings>=2.7",
+    "pyyaml>=6.0.3",
+    "supabase>=2.28.3",
+    "uvicorn>=0.42.0",
 ]
 
 [project.optional-dependencies]

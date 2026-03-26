@@ -1,7 +1,7 @@
 // ===== Configuration =====
 // Set these to your Supabase project, or use the FastAPI server as fallback
-const SUPABASE_URL = "https://qpntskjdcrttrwdelveh.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFwbnRza2pkY3J0dHJ3ZGVsdmVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0Mzk1OTMsImV4cCI6MjA5MDAxNTU5M30.LpLqSUUB0p_hy-m-AehYiiMwF5WjkPqj8rOdWGOcUpE";
+const SUPABASE_URL = "https://pxffucrogljitwfdyrpj.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4ZmZ1Y3JvZ2xqaXR3ZmR5cnBqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ0NzE3NzgsImV4cCI6MjA5MDA0Nzc3OH0.Yhuh_KXWofeqeHY8uY7_gxkA0noml5goa7JsosVfvuo";
 const API_URL = "http://localhost:8111";  // FastAPI server fallback
 const DEFAULT_TASK_ID = "cpc-camp-2026-summary-distributed";  // Set this to your task ID when using FastAPI mode
 
